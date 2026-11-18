@@ -50,6 +50,27 @@ export class SessionRecovery {
     if (names.length) return names.length === 1 ? names[0] : undefined;
     return sessions.length === 1 ? sessions[0] : undefined;
   }
+  async bound(id: string): Promise<Session | undefined> {
+    if (this.excluded(id)) return;
+    try {
+      const { thread: t } = await this.adapter.rpc.call('thread/read', {
+        threadId: id,
+        includeTurns: false,
+      });
+      if (t.parentThreadId || t.threadSource === 'pigeon-discussion') return;
+      return {
+        id: t.id,
+        project: basename(t.cwd),
+        cwd: t.cwd,
+        name: t.name || basename(t.cwd),
+        status: t.status.type === 'notLoaded' ? 'saved' : t.status.type,
+        source: t.source,
+        updatedAt: t.updatedAt,
+      };
+    } catch {
+      return;
+    }
+  }
   async resume(session: Session, text: string, messageId: string) {
     if (!(await stat(session.cwd)).isDirectory())
       throw Error('The project directory is unavailable; nothing was resumed.');

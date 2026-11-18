@@ -297,13 +297,24 @@ export class SlackBridge {
     }
     const bound = this.store.binding(channel, root);
     const sessions = await this.recovery.sessions();
-    const session = this.recovery.select(sessions, text, bound);
+    const session =
+      this.recovery.select(sessions, text, bound) ||
+      (bound ? await this.recovery.bound(bound) : undefined);
     if (!session) {
       if (bound) this.store.post(`stale:${id}`, channel, root, this.voice.say('stale'));
       else await this.choose(channel, root);
       return;
     }
     this.store.bind(channel, root, session.id);
+    if (session.status === 'saved' && intent === 'status') {
+      this.store.post(
+        `saved-status:${id}`,
+        channel,
+        root,
+        `${session.project} has a saved conversation, but it isn’t running in the shared runtime. Say “continue” to resume it; the old process itself cannot be restored.`,
+      );
+      return;
+    }
     if (intent === 'status') {
       const answer = statusReply(
         session,
