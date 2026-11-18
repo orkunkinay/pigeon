@@ -14,7 +14,9 @@ export class Store {
    CREATE TABLE IF NOT EXISTS watches(session TEXT PRIMARY KEY, channel TEXT, root TEXT);
   `);
   // Never replay a potentially delivered instruction after a crash.
-  this.db.exec("UPDATE inbox SET status='uncertain' WHERE status='sending'");
+  const interrupted=this.db.prepare("SELECT id,channel,root FROM inbox WHERE status='sending'").all() as any[];
+  this.db.exec("UPDATE inbox SET status='uncertain',text=NULL WHERE status='sending'");
+  for(const row of interrupted)this.post(`recovery:${row.id}`,row.channel,row.root,'Pigeon restarted during delivery. The instruction may have reached Codex; it will not be replayed. Check status before retrying.');
   this.prune();
  }
  bind(channel:string,root:string,session:string) { this.db.prepare('INSERT OR REPLACE INTO bindings VALUES(?,?,?)').run(channel,root,session); }

@@ -2,28 +2,25 @@ import bolt from '@slack/bolt';import {randomUUID,timingSafeEqual} from 'node:cr
 import type {Config} from '../../config.js';import {saveConfig,home} from '../../config.js';
 import {Store} from '../../store.js';import {CodexRpc,type RpcMessage} from '../../runtimes/codex/rpc.js';import {CodexAdapter} from '../../runtimes/codex/adapter.js';
 import {Approvals} from '../../approvals.js';import {classify,selectSession,statusText} from '../../router.js';import {log,failure} from '../../log.js';import {writeFileSync} from 'node:fs';import {join} from 'node:path';
-const {App}=bolt;
+const {App,SocketModeReceiver}=bolt;
 export function authorized(config:Config,team:unknown,user:unknown,channel:unknown){return !!config.userId&&team===config.teamId&&user===config.userId&&typeof channel==='string'&&channel.startsWith('D');}
 export class SlackBridge {
  readonly app: InstanceType<typeof App>;
+ readonly receiver: InstanceType<typeof SocketModeReceiver>;
+ private slackConnected=false;
  readonly rpc=new CodexRpc(); readonly adapter=new CodexAdapter(this.rpc);readonly approvals:Approvals;
  private running=false;private timer?:NodeJS.Timeout;private busy=false;private reconnectAt=0;private backoff=1000;private subscribed=new Set<string>();
  private serial=Promise.resolve();
  constructor(readonly config:Config,readonly store:Store,botToken:string,appToken:string,private pairingCode?:string){
   this.approvals=new Approvals(store,this.rpc);store.invalidateApprovals();
-  this.app=new App({token:botToken,appToken,socketMode:true,logLevel:bolt.LogLevel.ERROR,clientOptions:{retryConfig:{retries:3}}});
-  this.app.error(async()=>failure('slack_handler'));
-  this.app.event('message',async({event,body}:any)=>{
-   if(event.bot_id||event.subtype||!event.text||event.channel_type!=='im'||body.team_id!==config.teamId)return;
-   if(!config.userId){
-    const candidate=event.text.trim();const expected='pair '+this.pairingCode;
-    if(!this.pairingCode||Buffer.byteLength(candidate)!==Buffer.byteLength(expected)||!timingSafeEqual(Buffer.from(candidate),Buffer.from(expected)))return;
-    config.userId=event.user;config.dmChannel=event.channel;saveConfig(config);this.pairingCode=undefined;
-    store.post('paired',event.channel,event.ts,'Pigeon is paired with you. Say “sessions” to choose your coding session.');log('paired');return;
-   }
-   if(!authorized(config,body.team_id,event.user,event.channel))return;
-   store.enqueue(body.event_id||event.client_msg_id||`${event.channel}:${event.ts}`,event.channel,event.thread_ts||event.ts,event.text);
+  this.receiver=new SocketModeReceiver({appToken,logLevel:bolt.LogLevel.ERROR,
+   customPropertiesExtractor:({body}:any)=>{this.receive(body);return {};}
   });
+  this.receiver.client.on('connected',()=>{this.slackConnected=true;});
+  for(const event of ['disconnected','reconnecting'])this.receiver.client.on(event,()=>{this.slackConnected=false;});
+  this.app=new App({token:botToken,receiver:this.receiver,logLevel:bolt.LogLevel.ERROR,clientOptions:{timeout:10000,retryConfig:{retries:2}}});
+  this.app.error(async()=>failure('slack_handler'));
+  this.app.event('message',async()=>{}); // persisted in the receiver before Bolt acknowledges it
   this.app.action(/^session_/,async({ack,body,action}:any)=>{
    await ack();if(!authorized(config,body.team?.id,body.user?.id,body.channel?.id))return;
    const root=body.message?.thread_ts||body.message?.ts; if(!root)return;
@@ -40,6 +37,18 @@ export class SlackBridge {
   this.rpc.on('request',m=>this.approvals.receive(m));
   this.rpc.on('disconnected',()=>{this.subscribed.clear();this.approvals.disconnect();log('codex_disconnected');});
  }
+ private receive(body:any){
+  const event=body?.event;if(!event||event.type!=='message')return;
+  if(event.bot_id||event.subtype||!event.text||event.channel_type!=='im'||body.team_id!==this.config.teamId)return;
+  if(!this.config.userId){
+   const candidate=event.text.trim(),expected='pair '+this.pairingCode;
+   if(!this.pairingCode||Buffer.byteLength(candidate)!==Buffer.byteLength(expected)||!timingSafeEqual(Buffer.from(candidate),Buffer.from(expected)))return;
+   this.config.userId=event.user;this.config.dmChannel=event.channel;saveConfig(this.config);this.pairingCode=undefined;
+   this.store.post('paired',event.channel,event.ts,'Pigeon is paired with you. Say “sessions” to choose your coding session.');log('paired');return;
+  }
+  if(!authorized(this.config,body.team_id,event.user,event.channel))return;
+  this.store.enqueue(body.event_id||event.client_msg_id||`${event.channel}:${event.ts}`,event.channel,event.thread_ts||event.ts,event.text);
+ }
  private schedule(fn:()=>Promise<void>){this.serial=this.serial.then(fn).catch(()=>failure('runtime_notification'));}
  private async notification(m:RpcMessage){
   const p=m.params;if(m.method==='serverRequest/resolved'){this.approvals.resolved(p.requestId);return;}
@@ -52,7 +61,7 @@ export class SlackBridge {
    if(watch){this.store.post(`completed:${p.threadId}:${p.turn.id}`,watch.channel,watch.root,`Codex turn ${p.turn.status}.`);this.store.db.prepare('DELETE FROM watches WHERE session=?').run(p.threadId);}
   }
  }
- async start(){await this.app.start();this.running=true;log('slack_connected');this.timer=setInterval(()=>void this.tick(),1000);await this.tick();}
+ async start(){await this.app.start();this.running=true;log('slack_connected');this.timer=setInterval(()=>void this.tick().catch(()=>failure('bridge_tick')),1000);await this.tick();}
  async stop(){this.running=false;if(this.timer)clearInterval(this.timer);while(this.busy)await new Promise(r=>setTimeout(r,25));await this.serial;await this.rpc.close();await this.app.stop();}
  private async choose(channel:string,root:string){
   const sessions=await this.adapter.sessions();
@@ -74,7 +83,7 @@ export class SlackBridge {
   this.store.bind(channel,root,session.id);
   if(intent==='status'){this.store.post(`status:${id}`,channel,root,statusText(session,await this.adapter.snapshot(session.id)));return;}
   if(intent==='ambiguous'){this.store.post(`ambiguous:${id}`,channel,root,'There is no single human-input request to answer here. Use the approval buttons, or send a specific instruction.');return;}
-  if(intent==='watch'){await this.adapter.attach(session.id);this.store.db.prepare('INSERT OR REPLACE INTO watches VALUES(?,?,?)').run(session.id,channel,root);this.store.post(`watch:${id}`,channel,root,'I’ll notify you when the current Codex turn finishes.');return;}
+  if(intent==='watch'){const snapshot=await this.adapter.snapshot(session.id);if(snapshot.status.type!=='active'){this.store.post(`watch:${id}`,channel,root,'This session is already idle. Ask for status to see its latest result.');return;}await this.adapter.attach(session.id);this.store.db.prepare('INSERT OR REPLACE INTO watches VALUES(?,?,?)').run(session.id,channel,root);this.store.post(`watch:${id}`,channel,root,'I’ll notify you when the current Codex turn finishes.');return;}
   if(intent==='interrupt'){await this.adapter.interrupt(session.id);this.store.post(`interrupt:${id}`,channel,root,'Interruption requested for the active Codex turn.');return;}
   const delivery=await this.adapter.deliver(session.id,text,`pigeon:${id}`);
   this.store.post(`delivered:${id}`,channel,root,`${session.project}: ${delivery.mode==='steered'?'delivered to the active turn':'sent to the existing session'}.`);
@@ -88,7 +97,7 @@ export class SlackBridge {
    if(this.rpc.connected&&this.config.userId){
     // Restore subscriptions only to exact currently loaded identities.
     for(const {session} of this.store.db.prepare('SELECT DISTINCT session FROM bindings').all() as any[]){
-     if(!this.subscribed.has(session)){try{await this.adapter.attach(session);this.subscribed.add(session);}catch{}}
+     if(!this.subscribed.has(session)){try{await this.adapter.attach(session);this.subscribed.add(session);const snapshot=await this.adapter.snapshot(session);for(const item of snapshot.turns?.at(-1)?.items||[])if(item.type==='agentMessage'&&item.text)await this.notification({method:'item/completed',params:{threadId:session,item}});}catch{}}
     }
     for(const row of this.store.queued()){
      this.store.state(row.id,'sending');
@@ -97,14 +106,14 @@ export class SlackBridge {
     }
    }
    this.approvals.expire();
-   for(const row of this.store.outgoing()){
+   for(const row of this.store.outgoing().slice(0,1)){
     try{
      const chunks=(row.text||'').match(/[\s\S]{1,3500}/g)||[''];
      for(let n=0;n<chunks.length;n++)await this.app.client.chat.postMessage({channel:row.channel,thread_ts:row.root,text:chunks[n],blocks:row.blocks&&n===0?JSON.parse(row.blocks):undefined,unfurl_links:false,unfurl_media:false,parse:'none',metadata:{event_type:'pigeon_message',event_payload:{id:row.id,part:n}}});
      this.store.sent(row.id);
     }catch{failure('slack_delivery');break;}
    }
-   writeFileSync(join(home,'health.json'),JSON.stringify({pid:process.pid,time:Date.now(),codex:this.rpc.connected,paired:!!this.config.userId,slackStarted:this.running}),{mode:0o600});
+   writeFileSync(join(home,'health.json'),JSON.stringify({pid:process.pid,time:Date.now(),codex:this.rpc.connected,paired:!!this.config.userId,slack:this.slackConnected}),{mode:0o600});
   }finally{this.busy=false;}
  }
 }
