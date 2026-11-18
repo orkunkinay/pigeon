@@ -63,7 +63,7 @@ built.forEach((p, i) => {
 <nav aria-label="Primary"><a href="../index.html#demo" class="hide-s">Demo</a><a href="index.html" aria-current="page">Docs</a><a href="${REPO}" class="hide-s">GitHub</a><button class="themebtn" data-theme-toggle type="button" aria-label="Toggle dark mode">◐</button></nav></div></header>
 <div class="wrap docs"><aside class="side" id="side" aria-label="Documentation"><label for="q" class="note">Search docs (press /)</label><input id="q" type="search" autocomplete="off" placeholder="e.g. socket mode"><ul id="results"></ul>${nav(p)}${toc}</aside>
 <main id="main" class="article"><button class="btn sbtn" type="button" aria-expanded="false" aria-controls="side">☰ Docs menu</button>
-<p class="eyebrow">${p.group}</p><h1>${p.title}</h1>${p.body}
+<h1>${p.title}</h1>${p.body}
 <nav class="pn" aria-label="Previous and next">${prev ? `<a href="${prev.id}.html"><small>← Previous</small>${prev.title}</a>` : '<span></span>'}${next ? `<a class="next" href="${next.id}.html"><small>Next →</small>${next.title}</a>` : ''}</nav></main></div>
 <footer><div class="wrap"><span>Pigeon is MIT licensed. Preview software, macOS only.</span><a href="${REPO}">Source on GitHub</a></div></footer>
 <script src="../assets/scripts/search-index.js"></script><script src="../assets/scripts/site.js"></script></body></html>`;

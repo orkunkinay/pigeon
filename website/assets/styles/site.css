@@ -48,7 +48,6 @@ h1,h2,h3{font-family:var(--serif);line-height:1.12;letter-spacing:-.02em;margin:
 h1{font-size:clamp(40px,6.4vw,76px);font-weight:700}
 h2{font-size:clamp(30px,4vw,46px);font-weight:700}
 h3{font-size:22px}
-.eyebrow{font:600 13px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--green);margin:0 0 14px}
 .lede{font-size:clamp(18px,2vw,21px);color:var(--ink2);max-width:60ch}
 section{padding:84px 0;border-top:1px solid var(--line)}
 section.tight{padding:56px 0}

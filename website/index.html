@@ -41,7 +41,6 @@
 <main id="main">
 <section class="hero">
 <div class="wrap">
-  <p class="eyebrow">Open source · macOS preview · works with Codex</p>
   <h1>Your coding agent is <em>one message away.</em></h1>
   <p class="lede">Open Codex normally. Leave your computer. Stay connected through Slack. Ask what it is doing, change its priorities, approve a command, and answer when it needs you.</p>
   <div class="cta">
@@ -77,7 +76,6 @@
 
 <section id="problem">
 <div class="wrap">
-  <p class="eyebrow">The problem</p>
   <h2>Agents can work for hours. Then they need you.</h2>
   <p class="sub">A sign-in to approve. A decision only you can make. A command waiting for permission. If you are not at your computer, the agent just stops.</p>
   <div class="cmp">
@@ -101,7 +99,6 @@
 
 <section id="demo">
 <div class="wrap">
-  <p class="eyebrow">Interactive demo</p>
   <h2>See how each message is handled.</h2>
   <p class="sub">Pick a scenario. The left shows Slack. The right shows what Pigeon does with the message. <strong>This is an interactive illustration with scripted data. It is not connected to Slack or Codex.</strong> The wording and routing follow the real implementation.</p>
   <div class="demo">
@@ -117,7 +114,6 @@
 
 <section id="how">
 <div class="wrap">
-  <p class="eyebrow">How it works</p>
   <h2>Ask the status. Direct the session. Approve with a button.</h2>
   <p class="sub">Pigeon does not hand every Slack message to the agent as if it were the same kind of thing. Small, predictable rules decide where each message goes. No model guesses your intent.</p>
   <div class="routes">
@@ -140,7 +136,6 @@
 
 <section id="design">
 <div class="wrap" style="max-width:1320px">
-  <p class="eyebrow">The design</p>
   <h2>Route by intent, never send every message to main.</h2>
   <p class="sub">This sketch is the architecture Pigeon is built around: casual questions go to a read-only fork, instructions to the main session, approvals through a coordinator, and stopped work through a recovery manager. <strong>It is the target design, not a description of today's code.</strong> Click the image to enlarge it.</p>
   <figure class="shot" style="margin:26px 0 0"><button type="button" aria-label="Enlarge the architecture sketch"><picture><source srcset="assets/images/pigeon-architecture.webp" type="image/webp"><img src="assets/images/pigeon-architecture.jpg" width="1448" height="1086" loading="lazy" alt="Hand-drawn architecture sketch. A Slack message goes to Pigeon's intent router, which routes to a conversational fork for questions, a main agent controller for instructions, an approval coordinator for approvals and authentication, and a session recovery manager for stopped sessions. A session registry and the Pigeon skill with MCP tools sit alongside. An example flow runs from a question, to an instruction, to an authentication approval, to the main session continuing."></picture></button>
@@ -155,7 +150,6 @@
 
 <section id="quickstart">
 <div class="wrap">
-  <p class="eyebrow">Quick start</p>
   <h2>Install from source, connect Slack once.</h2>
   <p class="sub">macOS, Node.js 24+, Codex signed in, and permission to install a custom Slack app.</p>
   <div class="qs">
@@ -183,7 +177,6 @@ $ node dist/cli.js setup</code></pre></div>
 
 <section id="architecture">
 <div class="wrap">
-  <p class="eyebrow">Architecture</p>
   <h2>A small local service between Slack and Codex.</h2>
   <p class="sub">Select any part to see what it does and where it lives in the source. The dashed outline marks something that does not exist yet.</p>
   <div class="arch-wrap">
@@ -221,7 +214,6 @@ $ node dist/cli.js setup</code></pre></div>
 
 <section id="trust">
 <div class="wrap">
-  <p class="eyebrow">Open source, local first</p>
   <h2>No cloud. No tunnel. No second model.</h2>
   <div class="strip">
     <div class="box"><h3>Runs on your Mac</h3><p>A LaunchAgent, SQLite, and Slack Socket Mode. Nothing to host, no public URL, no signing secret.</p></div>
@@ -241,7 +233,6 @@ $ node dist/cli.js setup</code></pre></div>
 <section class="dark-band">
 <img class="bg" src="assets/images/pigeon-glow.jpg" alt="" loading="lazy" width="1200" height="800">
 <div class="wrap" style="padding-top:110px;padding-bottom:110px">
-  <p class="eyebrow" style="color:#2fd08e">Give it a try</p>
   <h2>Leave the desk. Keep the thread.</h2>
   <p class="lede">Ten minutes to set up. One Slack app. Your agent, one message away.</p>
   <div class="cta"><a class="btn primary" href="docs/getting-started.html">Get started</a><a class="btn" href="https://github.com/orkunkinay/pigeon">View the source</a><a class="btn" href="docs/index.html">Read the docs</a></div>
