@@ -11,14 +11,18 @@ if (
 )
   throw new Error('PIGEON_HOME must be a separate Pigeon data directory.');
 export const configPath = join(home, 'config.json');
+import { personality, type Personality } from './conversation/voice.js';
 export interface Config {
   teamId: string;
   userId?: string;
   dmChannel?: string;
   codexBin: string;
+  personality?: Partial<Personality>;
 }
 export function readConfig(): Config {
-  return JSON.parse(readFileSync(configPath, 'utf8'));
+  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  personality(config.personality);
+  return config;
 }
 export function saveConfig(c: Config) {
   mkdirSync(home, { recursive: true, mode: 0o700 });
