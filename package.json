@@ -23,6 +23,7 @@
   "license": "MIT",
   "dependencies": {
     "@slack/bolt": "^5.1.0",
+    "@slack/web-api": "^8.4.0",
     "ws": "^8.23.0"
   },
   "devDependencies": {
