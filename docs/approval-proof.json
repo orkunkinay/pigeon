@@ -1,0 +1,13 @@
+{
+  "threadId": "01a1ec34-23f3-78f3-93eb-13b277bfa211",
+  "date": "2026-11-18T01:10:02.974Z",
+  "requests": [
+    {
+      "method": "item/commandExecution/requestApproval",
+      "id": 0,
+      "turnId": "01a1ec34-25e1-7723-a1fe-2e97114c86af"
+    }
+  ],
+  "turnId": "01a1ec34-25e1-7723-a1fe-2e97114c86af",
+  "status": "completed"
+}

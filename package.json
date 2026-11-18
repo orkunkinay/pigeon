@@ -18,7 +18,10 @@
   "scripts": {
     "build": "tsc",
     "test": "tsx --test tests/*.test.ts",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "format": "prettier --write src tests scripts",
+    "format:check": "prettier --check src tests scripts",
+    "prepack": "npm run build"
   },
   "license": "MIT",
   "dependencies": {
@@ -29,7 +32,22 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@types/ws": "^8.18.2",
+    "prettier": "^3.10.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Murat-Barkin-Kinay/pigeon.git"
+  },
+  "keywords": [
+    "pigeon",
+    "codex",
+    "slack",
+    "local-first",
+    "coding-agent"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }
