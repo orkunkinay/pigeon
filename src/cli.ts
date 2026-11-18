@@ -5,6 +5,8 @@ import { readFile, rm, rmdir, mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
+import { WebClient } from '@slack/web-api';
+import { slackLogger } from './log.js';
 import { home, readConfig } from './config.js';
 import { readSecret, deleteSecrets } from './security/keychain.js';
 import { CodexRpc } from './runtimes/codex/rpc.js';
@@ -103,6 +105,30 @@ async function run() {
       );
     }
     if (command === 'doctor' && config) {
+      try {
+        const auth = await new WebClient(await readSecret('bot'), {
+          logger: slackLogger,
+          timeout: 10000,
+          retryConfig: { retries: 0 },
+        }).auth.test();
+        console.log(
+          `Slack bot authorization: ${auth.team_id === config.teamId ? 'valid' : 'workspace mismatch — run setup again'}`,
+        );
+      } catch {
+        console.log(
+          'Slack bot authorization: revoked, expired, or unreachable — check network or rerun setup',
+        );
+      }
+      try {
+        await new WebClient(await readSecret('app'), {
+          logger: slackLogger,
+          timeout: 10000,
+          retryConfig: { retries: 0 },
+        }).apiCall('apps.connections.open');
+        console.log('Slack Socket Mode credential: valid');
+      } catch {
+        console.log('Slack Socket Mode credential: revoked, expired, or unreachable');
+      }
       try {
         const r = await exec(config.codexBin, ['app-server', 'daemon', 'version']);
         console.log(r.stdout.trim());
