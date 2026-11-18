@@ -16,7 +16,7 @@ function page({ url, title, nav = [], active = -1, body = '', ann = '', label = 
 <rect y="40" width="960" height="44" fill="#3f0e40"/><text x="20" y="68" font-size="17" font-weight="800" fill="#fff">slack api</text><text x="840" y="68" font-size="13" fill="#d9c3d9">Your Apps</text>
 ${nav.length ? `<rect y="84" width="190" height="456" fill="#f8f8f8"/>${side}<line x1="190" y1="84" x2="190" y2="540" stroke="#e0e0e0"/>` : ''}
 <g transform="translate(${nav.length ? 190 : 0},84)">${body}</g>
-${ann}
+<g transform="translate(${nav.length ? 190 : 0},84)">${ann}</g>
 <rect x="12" y="506" width="262" height="22" rx="4" fill="#fff6dc" stroke="#d9b45a"/><text x="22" y="521" font-size="11.5" fill="#7a5a00" font-weight="600">${e(label)}</text>
 </svg>`;
 }
