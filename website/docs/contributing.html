@@ -20,7 +20,7 @@ $ npm run build</code></pre></div>
 <div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ node website/build.mjs                 # regenerates website/docs/*.html and the search index
 $ python3 -m http.server -d website 8000  # preview at http://localhost:8000</code></pre></div>
 <p>Docs content lives in <code>website/src/docs/*.html</code>, and the Slack diagrams in <code>website/src/shots.mjs</code>. The site uses only relative links, so it works from a GitHub Pages project subpath.</p>
-<p>Replacing a diagram with a real screenshot: save it under <code>website/assets/screenshots/</code>, redact tokens, workspace names and personal data first, and reference it with <code><figure class="shot"><button type="button"><img src="../assets/screenshots/file.png" alt="alt" loading="lazy"></button><figcaption><span class="kind" style="color:var(--green)">Real rendering</span> · caption</figcaption></figure></code>.</p>
+<p>Replacing a diagram with a real screenshot: save it under <code>website/assets/screenshots/</code>, redact tokens, workspace names and personal data first, and reference it with <code>&#123;&#123;img:file.png|alt|caption&#125;&#125;</code>.</p>
 
 <nav class="pn" aria-label="Previous and next"><a href="security.html"><small>← Previous</small>Security</a></nav></main></div>
 <footer><div class="wrap"><span>Pigeon is MIT licensed. Preview software, macOS only.</span><a href="https://github.com/Murat-Barkin-Kinay/pigeon">Source on GitHub</a></div></footer>
