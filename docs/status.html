@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Supported, experimental, unsupported · Pigeon docs</title><meta name="description" content="A plain account of what Pigeon verifiably does, what is experimental, and what does not exist.">
+<link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/styles/site.css"></head>
+<body><a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap"><a class="brand" href="../index.html"><img src="../assets/images/pigeon-mark.svg" alt="">Pigeon</a>
+<nav aria-label="Primary"><a href="../index.html#demo" class="hide-s">Demo</a><a href="index.html" aria-current="page">Docs</a><a href="https://github.com/orkunkinay/pigeon" class="hide-s">GitHub</a><button class="themebtn" data-theme-toggle type="button" aria-label="Toggle dark mode">◐</button></nav></div></header>
+<div class="wrap docs"><aside class="side" id="side" aria-label="Documentation"><label for="q" class="note">Search docs (press /)</label><input id="q" type="search" autocomplete="off" placeholder="e.g. socket mode"><ul id="results"></ul><h5>Start</h5><a href="index.html">Overview</a><a href="getting-started.html">Getting started</a><h5>Set up</h5><a href="slack-setup.html">Slack setup</a><a href="codex-integration.html">Codex integration</a><h5>Use</h5><a href="using-pigeon.html">Using Pigeon</a><a href="routing.html">How messages are routed</a><a href="sessions.html">Sessions and recovery</a><h5>Reference</h5><a href="troubleshooting.html">Troubleshooting</a><a href="status.html" aria-current="page">Supported, experimental, unsupported</a><a href="architecture.html">Architecture</a><a href="security.html">Security</a><a href="contributing.html">Contributing</a><h5>On this page</h5><div class="toc"><a href="#verified">Verified</a><a href="#implemented-with-restrictions">Implemented with restrictions</a><a href="#experimental">Experimental</a><a href="#not-built">Not built</a><a href="#cost">Cost</a><a href="#measured-on-one-development-machine">Measured on one development machine</a></div></aside>
+<main id="main" class="article"><button class="btn sbtn" type="button" aria-expanded="false" aria-controls="side">☰ Docs menu</button>
+<h1>Supported, experimental, unsupported</h1><p class="lede">Evidence collected on 2026-11-18: macOS 15.5 arm64, Node 24.18.0, Codex CLI 0.169.0, shared daemon 0.169.1. This page follows <code>docs/COMPATIBILITY.md</code> and <code>docs/TESTING.md</code> in the repository.</p>
+<h2 id="verified">Verified<a class="anchor" href="#verified" aria-label="Link to this section">#</a></h2>
+<ul>
+<li>Discover a normally opened CLI session, then attach to the same live worker (same thread and turn IDs).</li>
+<li>Slack → original session → Slack, with a real human Slack message.</li>
+<li>Steer an active turn; interrupt the exact active turn.</li>
+<li>Status replies that add no turn and no user item.</li>
+<li>Human command approval (one-time) and a single-question structured input.</li>
+<li>Proactive agent messages after you select a session.</li>
+<li>Pigeon restart rejoining the same live session; LaunchAgent bootstrap and restart.</li>
+<li>Clean package install into an empty prefix.</li>
+</ul>
+<h2 id="implemented-with-restrictions">Implemented with restrictions<a class="anchor" href="#implemented-with-restrictions" aria-label="Link to this section">#</a></h2>
+<ul>
+<li>Status recognition is a fixed phrase list, not natural-language understanding.</li>
+<li>Completion means the end of a Codex turn, not an arbitrary milestone.</li>
+<li>Approvals: a single displayable command with no additional permission bundle.</li>
+<li>Reconnect catch-up covers the latest turn only.</li>
+<li>Multiple sessions work with separate threads. No stress-scale result.</li>
+<li>The agent-side MCP tools and skill: a fresh Codex session independently read the skill and sent a real Slack message (<code>docs/awareness-notify-proof.json</code>). They also work from private runtimes such as <code>codex exec</code>; steering does not.</li>
+</ul>
+<h2 id="experimental">Experimental<a class="anchor" href="#experimental" aria-label="Link to this section">#</a></h2>
+<ul><li>The Codex daemon protocol itself and cross-version behaviour.</li><li>Recovery after a Codex daemon restart.</li><li>Mac sleep and network loss.</li><li>The dedicated Codex desktop app and IDE extensions beyond the observed case.</li></ul>
+<h2 id="not-built">Not built<a class="anchor" href="#not-built" aria-label="Link to this section">#</a></h2>
+<ul>
+<li>A conversational fork for answering questions beside the main session.</li>
+<li>A session recovery manager that resumes saved conversations.</li>
+<li>Remote attachment to private stdio or embedded runtimes; terminal injection.</li>
+<li>File-change and broad permission approvals from Slack; multi-question forms.</li>
+<li>Slack file uploads and screenshots.</li>
+<li>Windows and Linux installation.</li>
+<li>npm publication (<code>@pigeon-dev/cli</code> is a proposed, unpublished name).</li>
+</ul>
+<h2 id="cost">Cost<a class="anchor" href="#cost" aria-label="Link to this section">#</a></h2>
+<p>Pigeon runs on your Mac with SQLite and Slack Socket Mode. There is no cloud worker, tunnel, hosted database, or separate model API. Codex's own usage remains yours. Slack Free allows ten apps and shows the latest 90 days of history.</p>
+<h2 id="measured-on-one-development-machine">Measured on one development machine<a class="anchor" href="#measured-on-one-development-machine" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>Metric</th><th>Observation</th></tr></thead><tbody>
+<tr><td>Live session discovery</td><td>3.2–6.5 ms (10 samples)</td></tr>
+<tr><td>Slack instruction → delivery acknowledgment</td><td>about 1.39 s (one conversation)</td></tr>
+<tr><td>Idle service</td><td>about 121 MiB RSS, 0.3% CPU (one sample)</td></tr>
+</tbody></table></div>
+<p class="note">These are single observations, not performance guarantees. Raw data is in <code>docs/*-proof.json</code>.</p>
+
+<nav class="pn" aria-label="Previous and next"><a href="troubleshooting.html"><small>← Previous</small>Troubleshooting</a><a class="next" href="architecture.html"><small>Next →</small>Architecture</a></nav></main></div>
+<footer><div class="wrap"><span>Pigeon is MIT licensed. Preview software, macOS only.</span><a href="https://github.com/orkunkinay/pigeon">Source on GitHub</a></div></footer>
+<script src="../assets/scripts/search-index.js"></script><script src="../assets/scripts/site.js"></script></body></html>

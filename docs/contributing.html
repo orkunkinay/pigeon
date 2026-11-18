@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contributing · Pigeon docs</title><meta name="description" content="Build, test, and the rules for changes.">
+<link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/styles/site.css"></head>
+<body><a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap"><a class="brand" href="../index.html"><img src="../assets/images/pigeon-mark.svg" alt="">Pigeon</a>
+<nav aria-label="Primary"><a href="../index.html#demo" class="hide-s">Demo</a><a href="index.html" aria-current="page">Docs</a><a href="https://github.com/orkunkinay/pigeon" class="hide-s">GitHub</a><button class="themebtn" data-theme-toggle type="button" aria-label="Toggle dark mode">◐</button></nav></div></header>
+<div class="wrap docs"><aside class="side" id="side" aria-label="Documentation"><label for="q" class="note">Search docs (press /)</label><input id="q" type="search" autocomplete="off" placeholder="e.g. socket mode"><ul id="results"></ul><h5>Start</h5><a href="index.html">Overview</a><a href="getting-started.html">Getting started</a><h5>Set up</h5><a href="slack-setup.html">Slack setup</a><a href="codex-integration.html">Codex integration</a><h5>Use</h5><a href="using-pigeon.html">Using Pigeon</a><a href="routing.html">How messages are routed</a><a href="sessions.html">Sessions and recovery</a><h5>Reference</h5><a href="troubleshooting.html">Troubleshooting</a><a href="status.html">Supported, experimental, unsupported</a><a href="architecture.html">Architecture</a><a href="security.html">Security</a><a href="contributing.html" aria-current="page">Contributing</a><h5>On this page</h5><div class="toc"><a href="#develop">Develop</a><a href="#rules-that-keep-pigeon-trustworthy">Rules that keep Pigeon trustworthy</a><a href="#work-on-this-website">Work on this website</a></div></aside>
+<main id="main" class="article"><button class="btn sbtn" type="button" aria-expanded="false" aria-controls="side">☰ Docs menu</button>
+<h1>Contributing</h1><h2 id="develop">Develop<a class="anchor" href="#develop" aria-label="Link to this section">#</a></h2>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ npm ci
+$ npm run check          # tsc --noEmit
+$ npm test               # tsx --test tests/*.test.ts
+$ npm run format:check
+$ npm run build</code></pre></div>
+<p>Tests never need Slack tokens or a Codex login. They include a real Unix WebSocket fixture, out-of-order RPC correlation, crash recovery without replay, expired queues, ingress authorization and one-use approval controls. Scripts in <code>scripts/</code> are opt-in experiments against a real Codex and consume normal usage; read them first.</p>
+<h2 id="rules-that-keep-pigeon-trustworthy">Rules that keep Pigeon trustworthy<a class="anchor" href="#rules-that-keep-pigeon-trustworthy" aria-label="Link to this section">#</a></h2>
+<ul><li>A runtime adapter exposes only what it can observe and control.</li><li>Never substitute a resumed transcript for a running worker, retry an uncertain instruction, broaden a security policy, or choose an ambiguous session.</li><li>Add a regression test for any routing, authorization, persistence or protocol fix.</li><li>Never put private session logs, local config, tokens or unredacted screenshots in issues, fixtures or commits.</li></ul>
+<h2 id="work-on-this-website">Work on this website<a class="anchor" href="#work-on-this-website" aria-label="Link to this section">#</a></h2>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ node website/build.mjs                 # regenerates website/docs/*.html and the search index
+$ python3 -m http.server -d website 8000  # preview at http://localhost:8000</code></pre></div>
+<p>Docs content lives in <code>website/src/docs/*.html</code>, and the Slack diagrams in <code>website/src/shots.mjs</code>. The site uses only relative links, so it works from a GitHub Pages project subpath.</p>
+<p>Replacing a diagram with a real screenshot: save it under <code>website/assets/screenshots/</code>, redact tokens, workspace names and personal data first, and reference it with <code>&#123;&#123;img:file.png|alt|caption&#125;&#125;</code>.</p>
+
+<nav class="pn" aria-label="Previous and next"><a href="security.html"><small>← Previous</small>Security</a></nav></main></div>
+<footer><div class="wrap"><span>Pigeon is MIT licensed. Preview software, macOS only.</span><a href="https://github.com/orkunkinay/pigeon">Source on GitHub</a></div></footer>
+<script src="../assets/scripts/search-index.js"></script><script src="../assets/scripts/site.js"></script></body></html>

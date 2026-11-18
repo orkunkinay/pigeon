@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Codex integration · Pigeon docs</title><meta name="description" content="How Pigeon finds Codex sessions, joins them, and registers its MCP tools and skill.">
+<link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/styles/site.css"></head>
+<body><a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap"><a class="brand" href="../index.html"><img src="../assets/images/pigeon-mark.svg" alt="">Pigeon</a>
+<nav aria-label="Primary"><a href="../index.html#demo" class="hide-s">Demo</a><a href="index.html" aria-current="page">Docs</a><a href="https://github.com/orkunkinay/pigeon" class="hide-s">GitHub</a><button class="themebtn" data-theme-toggle type="button" aria-label="Toggle dark mode">◐</button></nav></div></header>
+<div class="wrap docs"><aside class="side" id="side" aria-label="Documentation"><label for="q" class="note">Search docs (press /)</label><input id="q" type="search" autocomplete="off" placeholder="e.g. socket mode"><ul id="results"></ul><h5>Start</h5><a href="index.html">Overview</a><a href="getting-started.html">Getting started</a><h5>Set up</h5><a href="slack-setup.html">Slack setup</a><a href="codex-integration.html" aria-current="page">Codex integration</a><h5>Use</h5><a href="using-pigeon.html">Using Pigeon</a><a href="routing.html">How messages are routed</a><a href="sessions.html">Sessions and recovery</a><h5>Reference</h5><a href="troubleshooting.html">Troubleshooting</a><a href="status.html">Supported, experimental, unsupported</a><a href="architecture.html">Architecture</a><a href="security.html">Security</a><a href="contributing.html">Contributing</a><h5>On this page</h5><div class="toc"><a href="#how-pigeon-finds-codex">How Pigeon finds Codex</a><a href="#supported-surfaces">Supported surfaces</a><a href="#mcp-tools-and-the-skill">MCP tools and the skill</a><a href="#limits-to-know">Limits to know</a></div></aside>
+<main id="main" class="article"><button class="btn sbtn" type="button" aria-expanded="false" aria-controls="side">☰ Docs menu</button>
+<h1>Codex integration</h1><h2 id="how-pigeon-finds-codex">How Pigeon finds Codex<a class="anchor" href="#how-pigeon-finds-codex" aria-label="Link to this section">#</a></h2>
+<p>Pigeon does not launch Codex and does not scrape a terminal. It connects to the <strong>shared Codex app-server daemon</strong> over the local control socket under <code>CODEX_HOME</code> (default <code>~/.codex</code>), using a WebSocket over a Unix socket. Nothing listens on a TCP port.</p>
+<ul>
+<li>It lists threads that are <em>loaded</em> in that daemon (<code>thread/loaded/list</code>). Internal subagent threads and threads that are no longer loaded are left out.</li>
+<li>When you press <b>Connect</b>, it joins that thread with <code>thread/resume</code> on the same server, without overriding model, directory, or permissions.</li>
+<li>If the control socket is unavailable it may run Codex's own idempotent <code>app-server daemon start</code>, at most once per 30 seconds. It never upgrades, restarts, stops, or enables remote control on Codex.</li>
+</ul>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ codex app-server daemon version     # should report a reachable daemon
+$ node dist/cli.js sessions           # JSON list of live, controllable sessions</code></pre></div>
+<h2 id="supported-surfaces">Supported surfaces<a class="anchor" href="#supported-surfaces" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>Surface</th><th>Status</th></tr></thead><tbody>
+<tr><td>Codex CLI opened normally, using the shared daemon</td><td><span class="pill ok">Verified</span> Tested on 0.169.0 / daemon 0.169.1</td></tr>
+<tr><td>IDE sessions that share the daemon</td><td><span class="pill exp">Experimental</span> A VS Code-sourced session was visible. No claim for every extension version.</td></tr>
+<tr><td>Dedicated Codex desktop app</td><td><span class="pill exp">Experimental</span> Not tested</td></tr>
+<tr><td>CLI started with <code>--no-daemon</code>, or any private/embedded server</td><td><span class="pill no">Not built</span> Not reachable: no shared control endpoint</td></tr>
+</tbody></table></div>
+<div class="callout warn"><p>An older Codex client can fall back to a private embedded runtime even while a daemon exists. <code>doctor</code> tells you whether Pigeon can see a shared runtime, not whether a given window is attached to it. If a window is missing from <code>sessions</code>, that is the first thing to suspect.</p></div>
+<h2 id="mcp-tools-and-the-skill">MCP tools and the skill<a class="anchor" href="#mcp-tools-and-the-skill" aria-label="Link to this section">#</a></h2>
+<p><code>setup</code> (and <code>install-agent</code>) gives the agent a way to reach you on its own initiative. All of it is reversible and tracked by a receipt in Pigeon's home directory.</p>
+<div class="tablewrap"><table><thead><tr><th>What</th><th>Where</th></tr></thead><tbody>
+<tr><td>MCP server <code>pigeon</code></td><td>Registered with <code>codex mcp add</code>. A locally owned launcher runs <code>pigeon mcp</code> from Pigeon's immutable installed runtime.</td></tr>
+<tr><td>Skill</td><td><code>~/.agents/skills/pigeon/SKILL.md</code></td></tr>
+<tr><td>Awareness block</td><td>A <code>&lt;!-- pigeon:begin --&gt;</code> … <code>&lt;!-- pigeon:end --&gt;</code> section in <code>AGENTS.md</code> (or <code>AGENTS.override.md</code> if that exists) under <code>CODEX_HOME</code>.</td></tr>
+</tbody></table></div>
+<p>If a <code>pigeon</code> skill or MCP entry already exists that Pigeon did not create, or you edited the block, setup refuses and preserves it rather than overwriting. New Codex sessions load the awareness; existing ones may need a restart to see the skill.</p>
+<h3 id="the-four-tools">The four tools<a class="anchor" href="#the-four-tools" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table><thead><tr><th>Tool</th><th>Use</th></tr></thead><tbody>
+<tr><td><code>pigeon_get_status</code></td><td>Read-only: is Slack connected and paired, and what voice preferences apply.</td></tr>
+<tr><td><code>pigeon_notify_human</code></td><td>Queue a short update without blocking. “Queued” is not “delivered”.</td></tr>
+<tr><td><code>pigeon_ask_human</code></td><td>Ask a question and wait for the correlated reply. Pending requests survive; reuse <code>request_id</code>.</td></tr>
+<tr><td><code>pigeon_request_human_action</code></td><td>Ask for an outside action, such as approving a Microsoft Authenticator number. The reply is a human report, not proof; the agent must verify.</td></tr>
+</tbody></table></div>
+<div class="callout warn"><p><strong>Codex's own tool consent still applies.</strong> The first use of a sending tool may need local approval, and a non-interactive session with approval policy <code>never</code> can reject a send. Pigeon reports the rejection instead of claiming delivery. Authorize the communication tools in Codex before you walk away.</p></div>
+<p>The tools also work from private Codex runtimes such as <code>codex exec</code>: the answer returns to that process's waiting call. Independent Slack steering and native approval forwarding still require a session loaded in the shared daemon.</p>
+<p>These tools cannot grant permissions, replace approval buttons, or collect passwords, OTPs, recovery codes, or tokens. Each call is tied to the Codex thread ID that Codex supplies, never inferred from the working directory.</p>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ node dist/cli.js doctor        # reports skill discovery and MCP tool verification
+$ node dist/cli.js install-agent # repair or re-install skill + MCP</code></pre></div>
+<h2 id="limits-to-know">Limits to know<a class="anchor" href="#limits-to-know" aria-label="Link to this section">#</a></h2>
+<ul>
+<li>Pigeon lists live sessions only. A conversation saved on disk is not a live connection. See <a href="sessions.html">Sessions and recovery</a>.</li>
+<li>There is no atomic “join only if already loaded” call in the public protocol. In a narrow race a thread can unload between the check and the join; Codex may then cold-resume it. A successful join of a continuously loaded thread was demonstrated; a universal guarantee is not claimed.</li>
+<li>After a Codex daemon restart, Pigeon reconnects only to loaded identities and invalidates old approval controls. This is experimental.</li>
+</ul>
+
+<nav class="pn" aria-label="Previous and next"><a href="slack-setup.html"><small>← Previous</small>Slack setup</a><a class="next" href="using-pigeon.html"><small>Next →</small>Using Pigeon</a></nav></main></div>
+<footer><div class="wrap"><span>Pigeon is MIT licensed. Preview software, macOS only.</span><a href="https://github.com/orkunkinay/pigeon">Source on GitHub</a></div></footer>
+<script src="../assets/scripts/search-index.js"></script><script src="../assets/scripts/site.js"></script></body></html>

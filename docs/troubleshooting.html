@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Troubleshooting · Pigeon docs</title><meta name="description" content="Symptoms, likely causes, and the exact command to run.">
+<link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/styles/site.css"></head>
+<body><a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap"><a class="brand" href="../index.html"><img src="../assets/images/pigeon-mark.svg" alt="">Pigeon</a>
+<nav aria-label="Primary"><a href="../index.html#demo" class="hide-s">Demo</a><a href="index.html" aria-current="page">Docs</a><a href="https://github.com/orkunkinay/pigeon" class="hide-s">GitHub</a><button class="themebtn" data-theme-toggle type="button" aria-label="Toggle dark mode">◐</button></nav></div></header>
+<div class="wrap docs"><aside class="side" id="side" aria-label="Documentation"><label for="q" class="note">Search docs (press /)</label><input id="q" type="search" autocomplete="off" placeholder="e.g. socket mode"><ul id="results"></ul><h5>Start</h5><a href="index.html">Overview</a><a href="getting-started.html">Getting started</a><h5>Set up</h5><a href="slack-setup.html">Slack setup</a><a href="codex-integration.html">Codex integration</a><h5>Use</h5><a href="using-pigeon.html">Using Pigeon</a><a href="routing.html">How messages are routed</a><a href="sessions.html">Sessions and recovery</a><h5>Reference</h5><a href="troubleshooting.html" aria-current="page">Troubleshooting</a><a href="status.html">Supported, experimental, unsupported</a><a href="architecture.html">Architecture</a><a href="security.html">Security</a><a href="contributing.html">Contributing</a><h5>On this page</h5><div class="toc"><a href="#setup-and-slack">Setup and Slack</a><a href="#codex-and-sessions">Codex and sessions</a><a href="#approvals-and-delivery">Approvals and delivery</a></div></aside>
+<main id="main" class="article"><button class="btn sbtn" type="button" aria-expanded="false" aria-controls="side">☰ Docs menu</button>
+<h1>Troubleshooting</h1><p class="lede">Start with <code>node dist/cli.js doctor</code> (or <code>pigeon doctor</code>). It checks pairing, Keychain, the service, the Codex runtime, the skill, MCP tools, and the Slack credential.</p>
+<h2 id="setup-and-slack">Setup and Slack<a class="anchor" href="#setup-and-slack" aria-label="Link to this section">#</a></h2>
+<details id="bot-does-not-respond"><summary>Pigeon does not respond in Slack</summary><div>
+<ol><li>Run <code>doctor</code>. Is the background service running and the Slack credential valid?</li>
+<li>Did you pair? <code>status</code> says “not paired” until you DM the <code>pair …</code> line from your account.</li>
+<li>Are you in the <b>Messages</b> tab of the Pigeon app? Pigeon ignores channels and edited messages.</li>
+<li>Are you messaging from the same workspace and Slack user you paired?</li></ol>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ node dist/cli.js status
+$ node dist/cli.js logs</code></pre></div></div></details>
+<details id="app-token-problems"><summary>App token problems (“could not validate or securely store these tokens”)</summary><div>
+<p>The app token must start with <code>xapp-</code> and carry <strong>only</strong> <code>connections:write</code>. The bot token must start with <code>xoxb-</code> and come from an installed app. Setup validates the bot token with <code>auth.test</code> and the app token with <code>apps.connections.open</code>; the terminal prints which stage failed (<code>bot-validation</code>, <code>app-validation</code>, <code>keychain-bot</code>, <code>keychain-app</code>).</p>
+<ul><li><code>bot-validation</code>: reinstall the app and copy the token again.</li><li><code>app-validation</code>: regenerate the app-level token with <code>connections:write</code>; check Socket Mode is enabled.</li><li><code>keychain-*</code>: see the Keychain item below.</li></ul></div></details>
+<details id="missing-permissions"><summary>Missing OAuth permissions</summary><div>
+<p>Under <b>OAuth &amp; Permissions → Bot Token Scopes</b> you need <code>chat:write</code> and <code>im:history</code>. Under <b>Event Subscriptions</b> the bot event <code>message.im</code>. If you edited the app, the simplest repair is to compare against <code>slack-manifest.json</code> (App Manifest page), then reinstall the app and run <code>setup</code> again.</p></div></details>
+<details id="socket-mode"><summary>Socket Mode disconnects, or “Slack disconnected”</summary><div>
+<p>Ordinary connection loss reconnects automatically. If it persists: check the network, that the app was not revoked or uninstalled, and that the app token was not regenerated or deleted. <code>doctor</code> prints “Slack Socket Mode credential: valid” or “revoked, expired, or unreachable”. Fix the second by rerunning <code>setup</code>.</p></div></details>
+<details id="keychain"><summary>Keychain credential unavailable</summary><div>
+<p>Unlock the login Keychain and allow the intended executable. Pigeon stores items <code>dev.pigeon.slack.bot</code> and <code>dev.pigeon.slack.app</code> with account <code>pigeon</code>. There is no plaintext fallback. Never paste tokens into logs or issues.</p></div></details>
+<details id="service-stopped"><summary>Background service stopped or stale</summary><div>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ node dist/cli.js install-service
+$ launchctl print gui/$(id -u)/dev.pigeon.companion</code></pre></div>
+<p>The service uses the Node installation that existed when it was installed. If you removed or upgraded that Node, reinstall the service.</p></div></details>
+<h2 id="codex-and-sessions">Codex and sessions<a class="anchor" href="#codex-and-sessions" aria-label="Link to this section">#</a></h2>
+<details id="session-not-found"><summary>Codex session not found / “I can’t see a live Codex session”</summary><div>
+<ul><li>Open Codex normally and start a task. Check <code>codex app-server daemon version</code>.</li>
+<li>The window may use a private or embedded server, another <code>CODEX_HOME</code>, a custom executor, or <code>--no-daemon</code>. History alone does not make a session controllable.</li>
+<li>“Daemon package missing”: install a supported official Codex distribution. Pigeon does not repair managed packages.</li></ul>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ node dist/cli.js sessions</code></pre></div></div></details>
+<details id="stale"><summary>“That session has gone offline”</summary><div>
+<p>The bound session is no longer loaded. Pigeon sent nothing. Reopen it in Codex, then DM <code>sessions</code> and Connect again. See <a href="sessions.html">Sessions and recovery</a>.</p></div></details>
+<details id="main-control"><summary>Main session cannot be controlled</summary><div>
+<p>Controls apply only to a thread loaded in the shared daemon. A second app-server cannot take over a thread: Codex rejects it with an active-writer error, and Pigeon never bypasses that lock. Use the session from the client that owns it, or reopen it through the shared daemon.</p></div></details>
+<details id="conflict"><summary>Ownership conflict or “Pigeon is already running”</summary><div>
+<p>An atomic lock prevents two Pigeon consumers. Stop the service before pairing manually, and do not run <code>daemon</code> while the LaunchAgent is active.</p></div></details>
+<details id="fork"><summary>“Conversational fork unavailable”</summary><div>
+<p>There is no fork feature in this release, so there is nothing to enable. Free-form questions go to the original session. See <a href="routing.html">routing</a>.</p></div></details>
+<details id="skill-mcp"><summary>Skill not discovered, or MCP registration failed</summary><div>
+<p><code>doctor</code> prints <code>skillDiscovered</code> and <code>mcpToolsVerified</code>. Run <code>install-agent</code> to repair. Setup refuses to overwrite a <code>pigeon</code> skill or MCP server it does not own, or an edited <code>pigeon:begin</code> block in <code>AGENTS.md</code>. Review and remove it manually, then rerun. Skills load in new sessions, so restart an old one.</p>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ node dist/cli.js install-agent
+$ codex mcp get pigeon --json</code></pre></div></div></details>
+<h2 id="approvals-and-delivery">Approvals and delivery<a class="anchor" href="#approvals-and-delivery" aria-label="Link to this section">#</a></h2>
+<details id="approval-expired"><summary>Pending approval expired or unavailable</summary><div>
+<p>Controls last 10 minutes and are invalidated by a Pigeon reconnect, a local approval, or a Codex restart. Unsupported requests (file changes, extra permissions, truncated commands) are never offered. Review it in Codex.</p></div></details>
+<details id="uncertain"><summary>“I couldn’t confirm delivery”</summary><div>
+<p>Pigeon will not replay a possibly-delivered instruction. Look at the session in Codex, then resend if needed. Queued messages expire after five minutes; offline stop requests are never queued.</p></div></details>
+<details id="duplicates"><summary>Duplicate or old replies after reconnect</summary><div>
+<p>Notifications are at-least-once. A crash after Slack accepted a post can duplicate it. It cannot cause duplicate Codex execution.</p></div></details>
+
+<nav class="pn" aria-label="Previous and next"><a href="sessions.html"><small>← Previous</small>Sessions and recovery</a><a class="next" href="status.html"><small>Next →</small>Supported, experimental, unsupported</a></nav></main></div>
+<footer><div class="wrap"><span>Pigeon is MIT licensed. Preview software, macOS only.</span><a href="https://github.com/orkunkinay/pigeon">Source on GitHub</a></div></footer>
+<script src="../assets/scripts/search-index.js"></script><script src="../assets/scripts/site.js"></script></body></html>
