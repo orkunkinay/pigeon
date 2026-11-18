@@ -42,15 +42,16 @@ export class Notifications {
         voice.preferences.proactiveness === 'updates' &&
         item.phase !== 'final_answer' &&
         this.now() - last >= 60000;
-      if (pending || attention || progress) {
+      const directReply = pending && !pending.answered && item.phase !== 'final_answer';
+      if (directReply || attention || progress) {
         const project = await this.project(p.threadId);
         this.store.post(
           `agent:${p.threadId}:${item.id}`,
           target.channel,
           target.root,
-          voice.agent(project, item.text),
+          voice.agent(project, item.text, !!directReply || attention),
         );
-        if (pending) {
+        if (directReply) {
           this.store.remember(
             pending.channel,
             pending.root,
@@ -59,10 +60,10 @@ export class Notifications {
             item.text,
           );
           this.store.db
-            .prepare('DELETE FROM awaited_replies WHERE session=? AND turn=?')
+            .prepare('UPDATE awaited_replies SET answered=1 WHERE session=? AND turn=?')
             .run(p.threadId, turn);
         }
-        if (progress && !pending && !attention)
+        if (progress && !directReply && !attention)
           this.store.db
             .prepare('INSERT OR REPLACE INTO progress_notifications VALUES(?,?)')
             .run(p.threadId, this.now());
@@ -93,7 +94,7 @@ export class Notifications {
           `agent:${p.threadId}:${last.item}`,
           target.channel,
           target.root,
-          voice.agent(project, last.text),
+          voice.agent(project, last.text, !!pending || !!watch),
         );
         if (pending)
           this.store.remember(

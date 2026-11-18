@@ -108,3 +108,15 @@ test('reconnect does not replay a long commentary history or duplicate a deliver
   assert.ok(!s.outgoing()[0].text.includes('Reading files'));
   s.close();
 });
+test('a requested turn gets one conversational update and its final answer, not every progress sentence', async () => {
+  const { s, n } = setup('quiet');
+  s.expectReply('a', 'turn', 'D', 'root', 'Fix the two tests.');
+  await n.handle(message('first', 'I’m checking the two failures.'));
+  await n.handle(message('routine', 'Reading a file.'));
+  assert.equal(s.outgoing().length, 1);
+  await n.handle(message('final', 'Both tests now pass.'));
+  await n.handle(complete());
+  assert.equal(s.outgoing().length, 2);
+  assert.match(s.outgoing().at(-1).text, /Both tests now pass/);
+  s.close();
+});

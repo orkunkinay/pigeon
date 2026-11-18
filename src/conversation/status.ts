@@ -26,7 +26,7 @@ export function observedTests(thread: any): TestResult | undefined {
   const command = items.findLast(
     (i: any) =>
       i.type === 'commandExecution' &&
-      /\b(?:pytest|vitest|jest|npm (?:run )?test|pnpm (?:run )?test|yarn test|cargo test|go test|--test)\b/.test(
+      /\b(?:pytest|vitest|jest|npm (?:run )?test|pnpm (?:run )?test|yarn test|cargo test|go test)\b|(?:^|\s)--test(?:\s|$)/.test(
         i.command || '',
       ) &&
       typeof i.aggregatedOutput === 'string',
@@ -100,9 +100,7 @@ export function statusReply(
   }
   const items = thread.turns?.at(-1)?.items || [];
   const recent = items.findLast((i: any) => i.type === 'agentMessage' && i.text);
-  const ageMinutes =
-    typeof thread.updatedAt === 'number' ? Math.floor((now - thread.updatedAt * 1000) / 60000) : 0;
-  const age = ageMinutes >= 2 ? voice.say('ago', { minutes: ageMinutes }) : '';
+  const age = ''; // Thread activity timestamps are not agent-message timestamps.
   let reply =
     heading +
     '\n' +

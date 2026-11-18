@@ -54,6 +54,7 @@ export function changePersonality(
   return personality({ ...input, [key]: key === 'address' && value === 'none' ? null : value });
 }
 const en = {
+  excerptNote: 'Excerpt — ask for the full reply if you need it.',
   paired: 'We’re connected. Send “sessions” and pick the project you want to talk to.',
   choose:
     'Which project are we talking about? Pick one below, then send your message in this thread.',
@@ -116,6 +117,7 @@ const en = {
 };
 export type Phrase = keyof typeof en;
 const es: Record<Phrase, string> = {
+  excerptNote: 'Extracto: puedes pedir la respuesta completa.',
   paired: 'Ya estamos conectados. Escribe “sessions” y elige el proyecto.',
   choose: '¿De qué proyecto hablamos? Elige uno y escribe en este hilo.',
   noSessions:
@@ -180,6 +182,7 @@ const es: Record<Phrase, string> = {
   drySuccess: 'Aburrido, en el buen sentido.',
 };
 const tr: Record<Phrase, string> = {
+  excerptNote: 'Alıntı — istersen yanıtın tamamını sorabilirsin.',
   paired: 'Bağlandık. “sessions” yazıp konuşmak istediğin projeyi seçebilirsin.',
   choose: 'Hangi projeden bahsediyoruz? Aşağıdan seçip bu başlıkta yazabilirsin.',
   noSessions:
@@ -291,8 +294,12 @@ export class Voice {
       ? chars.slice(0, this.excerptLimit).join('') + '…'
       : text.trim();
   }
-  agent(project: string, text: string) {
-    return this.say('agentSays', { project, text });
+  agent(project: string, text: string, full = false) {
+    const shown = full || this.preferences.verbosity === 'detailed' ? text : this.excerpt(text);
+    return (
+      this.say('agentSays', { project, text: shown }) +
+      (shown !== text ? '\n' + this.say('excerptNote') : '')
+    );
   }
   /** Preferences are user-level communication context, never a runtime policy override. */
   runtimeInput(message: string, previous?: { question: string; answer: string }): string {

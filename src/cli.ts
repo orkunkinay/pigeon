@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
 import { WebClient } from '@slack/web-api';
 import { slackLogger } from './log.js';
-import { home, readConfig } from './config.js';
+import { Voice, personality, changePersonality } from './conversation/voice.js';
+import { home, readConfig, saveConfig } from './config.js';
 import { readSecret, deleteSecrets } from './security/keychain.js';
 import { CodexRpc } from './runtimes/codex/rpc.js';
 import { CodexAdapter } from './runtimes/codex/adapter.js';
@@ -27,6 +28,25 @@ async function sessionList() {
   }
 }
 async function run() {
+  if (command === 'voice') {
+    const config = readConfig();
+    if (process.argv[3] === 'reset') {
+      config.personality = personality();
+      saveConfig(config);
+    } else if (process.argv[3] === 'set') {
+      const key = process.argv[4],
+        value = process.argv.slice(5).join(' ');
+      if (!key || !value) throw Error('Usage: pigeon voice set OPTION VALUE');
+      config.personality = changePersonality(config.personality, key, value);
+      saveConfig(config);
+    } else if (process.argv[3])
+      throw Error('Use pigeon voice, pigeon voice set OPTION VALUE, or pigeon voice reset.');
+    console.log(JSON.stringify(personality(config.personality), null, 2));
+    if (process.argv[3])
+      console.log('Saved. The running service picks this up within five seconds.');
+    return;
+  }
+
   if (command === 'sessions') {
     console.log(JSON.stringify(await sessionList(), null, 2));
     return;
@@ -166,7 +186,7 @@ async function run() {
     return;
   }
   console.log(
-    'Pigeon — your coding agent is one message away.\n\npigeon setup           Connect Slack and pair your user\npigeon status          Check connection and service state\npigeon doctor          Diagnose runtime and credentials\npigeon sessions        List live shared-daemon sessions\npigeon pair            Pair after a previously saved setup\npigeon install-service Install the macOS background service\npigeon logs            Follow redacted service logs\npigeon uninstall       Remove local Pigeon installation',
+    'Pigeon — your coding agent is one message away.\n\npigeon setup           Connect Slack and pair your user\npigeon status          Check connection and service state\npigeon doctor          Diagnose runtime and credentials\npigeon sessions        List live shared-daemon sessions\npigeon voice           Show or customize the colleague voice\npigeon pair            Pair after a previously saved setup\npigeon install-service Install the macOS background service\npigeon logs            Follow redacted service logs\npigeon uninstall       Remove local Pigeon installation',
   );
 }
 async function daemon(pair: boolean) {
@@ -194,7 +214,7 @@ async function daemon(pair: boolean) {
   await writeFile(join(lock, 'pid'), String(process.pid));
   const config = readConfig();
   // Start is idempotent: keep future normal CLI launches on the shared runtime. Never restart or upgrade Codex.
-  const store = new Store(join(home, 'pigeon.sqlite'));
+  const store = new Store(join(home, 'pigeon.sqlite'), () => new Voice(config.personality));
   let bridge: SlackBridge | undefined;
   let cleaned = false;
   const cleanup = async () => {

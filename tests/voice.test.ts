@@ -47,3 +47,12 @@ test('runtime preferences carry the actual prior exchange without replacing runt
   assert.match(text, /preserve existing task instructions/);
   assert.match(text, /"humour":"off"/);
 });
+test('unsolicited long replies are excerpts, while explicitly requested detail stays intact', () => {
+  const v = new Voice();
+  const long = 'Observed result. '.repeat(100);
+  assert.match(v.agent('app', long), /Excerpt/);
+  assert.ok(v.agent('app', long, true).includes(long));
+  assert.ok(
+    !new Voice({ humour: 'off' }).runtimeInput('Status?').includes('Dry humour is optional'),
+  );
+});

@@ -300,7 +300,9 @@ export class SlackBridge {
       if (Date.now() >= this.nextVoiceRefresh) {
         this.nextVoiceRefresh = Date.now() + 5000;
         try {
-          this.voice = new Voice(readConfig().personality);
+          const fresh = readConfig().personality;
+          this.voice = new Voice(fresh);
+          this.config.personality = fresh;
         } catch {}
       }
       if (!this.rpc.connected && Date.now() >= this.reconnectAt) {

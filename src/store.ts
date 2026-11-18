@@ -1,9 +1,13 @@
+import { Voice } from './conversation/voice.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 export class Store {
   readonly db: DatabaseSync;
-  constructor(path: string) {
+  constructor(
+    path: string,
+    private voice: () => Voice = () => new Voice(),
+  ) {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
     if (path !== ':memory:') chmodSync(path, 0o600);
@@ -13,7 +17,7 @@ export class Store {
    CREATE TABLE IF NOT EXISTS outbox(id TEXT PRIMARY KEY, channel TEXT, root TEXT, text TEXT, blocks TEXT, sent INTEGER DEFAULT 0, created INTEGER);
    CREATE TABLE IF NOT EXISTS approvals(token TEXT PRIMARY KEY, generation TEXT, rpc_id TEXT, session TEXT, channel TEXT, root TEXT, method TEXT, params TEXT, status TEXT, expires INTEGER);
    CREATE TABLE IF NOT EXISTS dialogue(channel TEXT, root TEXT, session TEXT, question TEXT, answer TEXT, updated INTEGER, PRIMARY KEY(channel,root));
-   CREATE TABLE IF NOT EXISTS awaited_replies(session TEXT, turn TEXT, channel TEXT, root TEXT, question TEXT, created INTEGER, PRIMARY KEY(session,turn));
+   CREATE TABLE IF NOT EXISTS awaited_replies(session TEXT, turn TEXT, channel TEXT, root TEXT, question TEXT, created INTEGER, answered INTEGER DEFAULT 0, PRIMARY KEY(session,turn));
    CREATE TABLE IF NOT EXISTS turn_messages(session TEXT, turn TEXT, item TEXT, text TEXT, PRIMARY KEY(session,turn));
    CREATE TABLE IF NOT EXISTS progress_notifications(session TEXT PRIMARY KEY, updated INTEGER);
    CREATE TABLE IF NOT EXISTS watches(session TEXT PRIMARY KEY, channel TEXT, root TEXT, turn TEXT);
@@ -23,18 +27,19 @@ export class Store {
     ) {
       this.db.exec('ALTER TABLE watches ADD COLUMN turn TEXT; DELETE FROM watches;');
     }
+    if (
+      !(this.db.prepare('PRAGMA table_info(awaited_replies)').all() as any[]).some(
+        (c) => c.name === 'answered',
+      )
+    )
+      this.db.exec('ALTER TABLE awaited_replies ADD COLUMN answered INTEGER DEFAULT 0');
     // Never replay a potentially delivered instruction after a crash.
     const interrupted = this.db
       .prepare("SELECT id,channel,root FROM inbox WHERE status='sending'")
       .all() as any[];
     this.db.exec("UPDATE inbox SET status='uncertain',text=NULL WHERE status='sending'");
     for (const row of interrupted)
-      this.post(
-        `recovery:${row.id}`,
-        row.channel,
-        row.root,
-        'Pigeon restarted during delivery. The instruction may have reached Codex; it will not be replayed. Check status before retrying.',
-      );
+      this.post(`recovery:${row.id}`, row.channel, row.root, this.voice().say('recovered'));
     this.prune();
   }
   bind(channel: string, root: string, session: string) {
@@ -70,7 +75,9 @@ export class Store {
   }
   expectReply(session: string, turn: string, channel: string, root: string, question: string) {
     this.db
-      .prepare('INSERT OR REPLACE INTO awaited_replies VALUES(?,?,?,?,?,?)')
+      .prepare(
+        'INSERT OR REPLACE INTO awaited_replies(session,turn,channel,root,question,created) VALUES(?,?,?,?,?,?)',
+      )
       .run(session, turn, channel, root, question.slice(0, 2000), Date.now());
   }
   enqueue(id: string, channel: string, root: string, text: string) {
@@ -114,12 +121,7 @@ export class Store {
       .all(Date.now() - 300000) as any[];
     for (const row of rows) {
       this.state(row.id, 'expired');
-      this.post(
-        `expired:${row.id}`,
-        row.channel,
-        row.root,
-        'This queued message expired after five minutes and was not delivered. Send it again if it is still relevant.',
-      );
+      this.post(`expired:${row.id}`, row.channel, row.root, this.voice().say('expired'));
     }
   }
 
