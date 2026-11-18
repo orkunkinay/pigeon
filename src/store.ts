@@ -12,6 +12,10 @@ export class Store {
    CREATE TABLE IF NOT EXISTS inbox(id TEXT PRIMARY KEY, channel TEXT, root TEXT, text TEXT, status TEXT, created INTEGER);
    CREATE TABLE IF NOT EXISTS outbox(id TEXT PRIMARY KEY, channel TEXT, root TEXT, text TEXT, blocks TEXT, sent INTEGER DEFAULT 0, created INTEGER);
    CREATE TABLE IF NOT EXISTS approvals(token TEXT PRIMARY KEY, generation TEXT, rpc_id TEXT, session TEXT, channel TEXT, root TEXT, method TEXT, params TEXT, status TEXT, expires INTEGER);
+   CREATE TABLE IF NOT EXISTS dialogue(channel TEXT, root TEXT, session TEXT, question TEXT, answer TEXT, updated INTEGER, PRIMARY KEY(channel,root));
+   CREATE TABLE IF NOT EXISTS awaited_replies(session TEXT, turn TEXT, channel TEXT, root TEXT, question TEXT, created INTEGER, PRIMARY KEY(session,turn));
+   CREATE TABLE IF NOT EXISTS turn_messages(session TEXT, turn TEXT, item TEXT, text TEXT, PRIMARY KEY(session,turn));
+   CREATE TABLE IF NOT EXISTS progress_notifications(session TEXT PRIMARY KEY, updated INTEGER);
    CREATE TABLE IF NOT EXISTS watches(session TEXT PRIMARY KEY, channel TEXT, root TEXT, turn TEXT);
   `);
     if (
@@ -47,6 +51,27 @@ export class Store {
     return this.db
       .prepare('SELECT channel,root FROM bindings WHERE session=? ORDER BY rowid DESC LIMIT 1')
       .all(session) as any;
+  }
+  remember(channel: string, root: string, session: string, question: string, answer: string) {
+    this.db
+      .prepare('INSERT OR REPLACE INTO dialogue VALUES(?,?,?,?,?,?)')
+      .run(channel, root, session, question.slice(0, 2000), answer.slice(0, 3000), Date.now());
+  }
+  conversation(
+    channel: string,
+    root: string,
+    session: string,
+  ): { question: string; answer: string } | undefined {
+    return this.db
+      .prepare(
+        'SELECT question,answer FROM dialogue WHERE channel=? AND root=? AND session=? AND updated>?',
+      )
+      .get(channel, root, session, Date.now() - 1800000) as any;
+  }
+  expectReply(session: string, turn: string, channel: string, root: string, question: string) {
+    this.db
+      .prepare('INSERT OR REPLACE INTO awaited_replies VALUES(?,?,?,?,?,?)')
+      .run(session, turn, channel, root, question.slice(0, 2000), Date.now());
   }
   enqueue(id: string, channel: string, root: string, text: string) {
     return (
@@ -111,6 +136,13 @@ export class Store {
   }
   prune() {
     const cutoff = Date.now() - 7 * 86400000;
+    this.db.prepare('DELETE FROM dialogue WHERE updated<?').run(Date.now() - 1800000);
+    this.db.prepare('DELETE FROM awaited_replies WHERE created<?').run(Date.now() - 86400000);
+    this.db
+      .prepare(
+        'DELETE FROM turn_messages WHERE rowid NOT IN (SELECT rowid FROM turn_messages ORDER BY rowid DESC LIMIT 100)',
+      )
+      .run();
     this.db.prepare('DELETE FROM inbox WHERE created<?').run(cutoff);
     this.db.prepare('DELETE FROM outbox WHERE created<?').run(cutoff);
     this.db.prepare('DELETE FROM approvals WHERE expires<?').run(Date.now() - 86400000);
