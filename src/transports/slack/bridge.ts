@@ -30,12 +30,14 @@ export class SlackBridge {
   private serial = Promise.resolve();
   private nextPostAt = 0;
   private nextPruneAt = 0;
+  private nextEnsureAt = 0;
   constructor(
     readonly config: Config,
     readonly store: Store,
     botToken: string,
     appToken: string,
     pairingCode?: string,
+    private ensureRuntime?: () => Promise<void>,
   ) {
     this.approvals = new Approvals(store, this.rpc);
     this.ingress = new SlackIngress(config, store, () => this.rpc.connected, pairingCode);
@@ -308,6 +310,10 @@ export class SlackBridge {
           this.backoff = 1000;
           log('codex_connected');
         } catch {
+          if (this.ensureRuntime && Date.now() >= this.nextEnsureAt) {
+            this.nextEnsureAt = Date.now() + 30000;
+            await this.ensureRuntime().catch(() => failure('codex_daemon_start'));
+          }
           this.reconnectAt = Date.now() + this.backoff + Math.random() * 300;
           this.backoff = Math.min(30000, this.backoff * 2);
         }

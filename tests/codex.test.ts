@@ -36,6 +36,7 @@ test('steers original active turn with a turn precondition and no policy overrid
   assert.equal(steer.params.threadId, 'original');
   assert.deepEqual(calls.find((c) => c.method === 'thread/resume').params, {
     threadId: 'original',
+    excludeTurns: true,
   });
   assert.ok(!calls.some((c) => c.method === 'thread/start' || c.method === 'turn/start'));
 });

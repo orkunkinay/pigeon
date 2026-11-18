@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, rm, mkdir, open, stat, rename } from 'node:fs/promises';
+import { readFile, rm, mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
@@ -21,7 +21,7 @@ async function sessionList() {
     await rpc.connect();
     return await new CodexAdapter(rpc).sessions();
   } finally {
-    rpc.close();
+    await rpc.close();
   }
 }
 async function run() {
@@ -75,7 +75,7 @@ async function run() {
         health.time = 0;
       }
       console.log(
-        `Background service: ${Date.now() - health.time < 30000 ? 'running' : 'stale or stopped'}; Codex: ${health.codex ? 'connected' : 'disconnected'}`,
+        `Background service: ${Date.now() - health.time < 30000 ? 'running' : 'stale or stopped'}; Slack: ${health.slack ? 'connected' : 'disconnected'}; Codex: ${health.codex ? 'connected' : 'disconnected'}`,
       );
     } catch {
       console.log('Background service: not running');
@@ -145,14 +145,23 @@ async function daemon(pair: boolean) {
   const { writeFile } = await import('node:fs/promises');
   await writeFile(join(lock, 'pid'), String(process.pid));
   const config = readConfig();
-  // Do not auto-start or restart Codex: its owning UI controls its lifecycle.
+  // Start is idempotent: keep future normal CLI launches on the shared runtime. Never restart or upgrade Codex.
   const store = new Store(join(home, 'pigeon.sqlite'));
   let bridge: SlackBridge | undefined;
   try {
     const code = pair && !config.userId ? randomBytes(12).toString('hex') : undefined;
     if (!config.userId && !code) throw Error('Slack user not paired. Run pigeon pair.');
     if (code) console.log(`In a direct message to Pigeon, send: pair ${code}`);
-    bridge = new SlackBridge(config, store, await readSecret('bot'), await readSecret('app'), code);
+    bridge = new SlackBridge(
+      config,
+      store,
+      await readSecret('bot'),
+      await readSecret('app'),
+      code,
+      async () => {
+        await exec(config.codexBin, ['app-server', 'daemon', 'start'], { timeout: 15000 });
+      },
+    );
     await bridge.start();
     let stopping = false;
     const stop = async () => {
