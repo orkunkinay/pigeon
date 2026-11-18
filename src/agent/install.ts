@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, rm, lstat } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rm, rmdir, lstat, rename } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { execFile } from 'node:child_process';
@@ -13,6 +13,8 @@ type Receipt = {
   insertion: string;
   skill: string;
   registration: Registration;
+  priorRegistration?: Registration;
+  priorSkill?: string;
 };
 export type InstallPaths = { userHome: string; codexHome: string; pigeonHome: string };
 const defaults = (): InstallPaths => ({
@@ -71,11 +73,20 @@ export async function installAgentIntegration(
   const existingSkill = await contents(skillPath);
   if (
     existingSkill &&
-    (!previous || previous.skillPath !== skillPath || existingSkill !== previous.skill)
+    (!previous ||
+      previous.skillPath !== skillPath ||
+      ![previous.skill, previous.priorSkill].includes(existingSkill))
   )
     throw Error('An existing pigeon skill is not owned by this installation; it was preserved.');
   const current = await registration(codex, paths);
-  if (current && (!previous || !matches(current, previous.registration)))
+  if (
+    current &&
+    (!previous ||
+      !(
+        matches(current, previous.registration) ||
+        (previous.priorRegistration && matches(current, previous.priorRegistration))
+      ))
+  )
     throw Error(
       'An existing pigeon MCP configuration was preserved. Choose another name or remove it explicitly before installation.',
     );
@@ -100,9 +111,21 @@ export async function installAgentIntegration(
     env: { PIGEON_HOME: paths.pigeonHome },
   };
   // Write the ownership receipt before mutation so interrupted setup remains reversible.
-  const receipt: Receipt = { skillPath, instructionPath, insertion, skill, registration: expected };
+  const receipt: Receipt = {
+    skillPath,
+    instructionPath,
+    insertion,
+    skill,
+    registration: expected,
+    priorRegistration:
+      previous && matches(current, previous.registration)
+        ? previous.registration
+        : previous?.priorRegistration,
+    priorSkill: existingSkill || undefined,
+  };
   await mkdir(paths.pigeonHome, { recursive: true, mode: 0o700 });
-  await writeFile(receiptPath, JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
+  await writeFile(receiptPath + '.tmp', JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
+  await rename(receiptPath + '.tmp', receiptPath);
   if (previous && previous.instructionPath !== instructionPath) {
     await regular(previous.instructionPath);
     const old = await contents(previous.instructionPath);
@@ -130,6 +153,10 @@ export async function installAgentIntegration(
   );
   if (!matches(await registration(codex, paths), expected))
     throw Error('MCP registration verification failed');
+  delete receipt.priorRegistration;
+  delete receipt.priorSkill;
+  await writeFile(receiptPath + '.tmp', JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
+  await rename(receiptPath + '.tmp', receiptPath);
   return { skillPath, instructionPath, mcpRegistered: true };
 }
 export async function removeAgentIntegration(codex: string, paths = defaults()) {
@@ -140,16 +167,20 @@ export async function removeAgentIntegration(codex: string, paths = defaults()) 
   const preserved: string[] = [];
   await regular(receipt.skillPath);
   await regular(receipt.instructionPath);
-  if ((await contents(receipt.skillPath)) === receipt.skill) {
-    await rm(receipt.skillPath);
-    await rm(dirname(receipt.skillPath), { recursive: false }).catch(() => {});
+  const installedSkill = await contents(receipt.skillPath);
+  if (!installedSkill || [receipt.skill, receipt.priorSkill].includes(installedSkill)) {
+    await rm(receipt.skillPath, { force: true });
+    await rmdir(dirname(receipt.skillPath)).catch(() => {});
   } else preserved.push(receipt.skillPath);
   const instructions = await contents(receipt.instructionPath);
   if (instructions.includes(receipt.insertion))
     await writeFile(receipt.instructionPath, instructions.replace(receipt.insertion, ''));
-  else preserved.push(receipt.instructionPath);
+  else if (instructions.includes('<!-- pigeon:begin -->')) preserved.push(receipt.instructionPath);
   const current = await registration(codex, paths);
-  if (matches(current, receipt.registration))
+  if (
+    matches(current, receipt.registration) ||
+    (receipt.priorRegistration && matches(current, receipt.priorRegistration))
+  )
     await exec(codex, ['mcp', 'remove', 'pigeon'], {
       env: { ...process.env, CODEX_HOME: paths.codexHome },
     });

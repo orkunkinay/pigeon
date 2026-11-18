@@ -17,7 +17,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-skills.mjs",
     "test": "tsx --test tests/*.test.ts",
     "check": "tsc --noEmit",
     "format": "prettier --write src tests scripts",

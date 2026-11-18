@@ -26,6 +26,12 @@ export const tools = [
             type: 'string',
             description: 'Resume an existing request from this same session; does not resend it.',
           },
+          reason: {
+            type: 'string',
+            enum: ['requested', 'important', 'completion'],
+            description:
+              'Notification reason. Completion obeys quiet mode; explicitly requested updates are always allowed.',
+          },
           request_key: {
             type: 'string',
             maxLength: 120,

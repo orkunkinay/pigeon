@@ -69,9 +69,19 @@ export class HumanCommunication {
   answer(channel: string, root: string, text: string) {
     this.prune();
     const row = this.store.db
-      .prepare("SELECT * FROM human_requests WHERE channel=? AND root=? AND status='pending'")
+      .prepare('SELECT * FROM human_requests WHERE channel=? AND root=?')
       .get(channel, root) as RequestRow | undefined;
     if (!row) return false;
+    if (row.status === 'answered' || row.tool === 'pigeon_notify_human') return false;
+    if (row.status !== 'pending') {
+      this.store.post(
+        `human-closed:${row.id}`,
+        channel,
+        root,
+        'That request is no longer waiting. No response was sent to the agent.',
+      );
+      return true;
+    }
     // Replies are user input. They cannot resolve native approval objects or grant permissions.
     this.store.db
       .prepare(
@@ -84,7 +94,14 @@ export class HumanCommunication {
   async call(call: AgentCall, signal: AbortSignal) {
     if (!call || !tools.some((t) => t.name === call.name)) throw Error('Unknown Pigeon tool');
     const a = call.arguments || {};
-    const allowed = ['message', 'request_id', 'request_key', 'wait_seconds', 'expires_in_seconds'];
+    const allowed = [
+      'message',
+      'request_id',
+      'request_key',
+      'wait_seconds',
+      'expires_in_seconds',
+      'reason',
+    ];
     if (Object.keys(a).some((k) => !allowed.includes(k)))
       throw Error('Unknown communication option');
     this.prune();
@@ -105,6 +122,11 @@ export class HumanCommunication {
         'Runtime thread attribution is missing. This client must supply _meta.threadId; no session is guessed.',
       );
     const notify = call.name === 'pigeon_notify_human';
+    const reason = a.reason ?? 'important';
+    if (!['requested', 'important', 'completion'].includes(String(reason)))
+      throw Error('Invalid notification reason');
+    if (notify && reason === 'completion' && this.voice().preferences.proactiveness === 'quiet')
+      return { status: 'suppressed', reason: 'quiet notification preference' };
     const wait = a.wait_seconds ?? 40;
     const expiry = a.expires_in_seconds ?? 86400;
     if (
