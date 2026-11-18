@@ -1,12 +1,15 @@
 import bolt from '@slack/bolt';
 import { randomUUID } from 'node:crypto';
 import type { Config } from '../../config.js';
-import { home } from '../../config.js';
+import { home, readConfig } from '../../config.js';
 import { Store } from '../../store.js';
 import { CodexRpc, type RpcMessage } from '../../runtimes/codex/rpc.js';
 import { CodexAdapter } from '../../runtimes/codex/adapter.js';
 import { Approvals } from '../../approvals.js';
-import { classify, selectSession, statusText, awaitsConversationalReply } from '../../router.js';
+import { Voice } from '../../conversation/voice.js';
+import { statusReply } from '../../conversation/status.js';
+import { Notifications } from '../../conversation/notifications.js';
+import { classify, selectSession, awaitsConversationalReply } from '../../router.js';
 import { log, failure, slackLogger } from '../../log.js';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -18,6 +21,9 @@ export class SlackBridge {
   readonly receiver: InstanceType<typeof SocketModeReceiver>;
   private slackConnected = false;
   private ingress: SlackIngress;
+  private voice: Voice;
+  private notifications: Notifications;
+  private nextVoiceRefresh = 0;
   readonly rpc = new CodexRpc();
   readonly adapter = new CodexAdapter(this.rpc);
   readonly approvals: Approvals;
@@ -39,8 +45,27 @@ export class SlackBridge {
     pairingCode?: string,
     private ensureRuntime?: () => Promise<void>,
   ) {
-    this.approvals = new Approvals(store, this.rpc);
-    this.ingress = new SlackIngress(config, store, () => this.rpc.connected, pairingCode);
+    this.voice = new Voice(config.personality);
+    this.notifications = new Notifications(
+      store,
+      () => this.voice,
+      async (id) => {
+        try {
+          return (await this.adapter.assertLoaded(id)).project;
+        } catch {
+          return 'Codex';
+        }
+      },
+    );
+    this.approvals = new Approvals(store, this.rpc, () => this.voice);
+    this.ingress = new SlackIngress(
+      config,
+      store,
+      () => this.rpc.connected,
+      pairingCode,
+      undefined,
+      () => this.voice,
+    );
     store.invalidateApprovals();
     this.receiver = new SocketModeReceiver({
       appToken,
@@ -75,22 +100,17 @@ export class SlackBridge {
       const id = action.value;
       if (typeof id !== 'string') return;
       try {
-        await this.adapter.assertLoaded(id);
+        const selected = await this.adapter.assertLoaded(id);
         await this.adapter.attach(id);
         store.bind(body.channel.id, root, id);
         store.post(
           randomUUID(),
           body.channel.id,
           root,
-          'Connected to the selected session. Send your instruction in this thread.',
+          this.voice.say('connected', { project: selected.project }),
         );
       } catch {
-        store.post(
-          randomUUID(),
-          body.channel.id,
-          root,
-          'That session is unavailable. Ask for “sessions” again.',
-        );
+        store.post(randomUUID(), body.channel.id, root, this.voice.say('unavailable'));
       }
     });
     this.app.action(/^approval_/, async ({ ack, body, action }: any) => {
@@ -105,19 +125,9 @@ export class SlackBridge {
           root,
           action.action_id === 'approval_accept' ? 'accept' : 'decline',
         );
-        store.post(
-          randomUUID(),
-          body.channel.id,
-          root,
-          'Your one-time decision was sent to Codex. The runtime decides whether the request is still valid.',
-        );
+        store.post(randomUUID(), body.channel.id, root, this.voice.say('decisionSent'));
       } catch {
-        store.post(
-          randomUUID(),
-          body.channel.id,
-          root,
-          'This approval is unavailable or already resolved. Check Codex for the current request.',
-        );
+        store.post(randomUUID(), body.channel.id, root, this.voice.say('approvalGone'));
       }
     });
     this.rpc.on('notification', (m) => this.schedule(() => this.notification(m)));
@@ -137,27 +147,9 @@ export class SlackBridge {
       this.approvals.resolved(p.requestId);
       return;
     }
-    if (!p?.threadId) return;
-    const target = this.store.targets(p.threadId)[0];
-    if (!target) return;
-    if (m.method === 'item/completed' && p.item?.type === 'agentMessage' && p.item.text) {
-      this.store.post(`agent:${p.threadId}:${p.item.id}`, target.channel, target.root, p.item.text);
-    }
-    if (m.method === 'turn/completed') {
-      const watch = this.store.db
-        .prepare('SELECT * FROM watches WHERE session=?')
-        .get(p.threadId) as any;
-      if (watch && watch.turn === p.turn.id) {
-        this.store.post(
-          `completed:${p.threadId}:${p.turn.id}`,
-          watch.channel,
-          watch.root,
-          `Codex turn ${p.turn.status}.`,
-        );
-        this.store.db.prepare('DELETE FROM watches WHERE session=?').run(p.threadId);
-      }
-    }
+    await this.notifications.handle(m);
   }
+
   async start() {
     await this.app.start();
     this.running = true;
@@ -180,9 +172,7 @@ export class SlackBridge {
         type: 'section',
         text: {
           type: 'plain_text',
-          text: sessions.length
-            ? 'Choose a session. Instructions are sent only after a selection.'
-            : 'No live sessions are available in the shared Codex daemon. Open Codex normally; private embedded runtimes cannot be controlled.',
+          text: sessions.length ? this.voice.say('choose') : this.voice.say('noSessions'),
         },
       },
     ];
@@ -200,7 +190,7 @@ export class SlackBridge {
           value: s.id,
         },
       });
-    this.store.post(randomUUID(), channel, root, 'Choose a Codex session', blocks);
+    this.store.post(randomUUID(), channel, root, this.voice.say('choose'), blocks);
   }
   private async route(row: any) {
     const { channel, root, text, id } = row;
@@ -213,37 +203,30 @@ export class SlackBridge {
       (intent === 'instruction' || intent === 'ambiguous') &&
       this.approvals.answer(channel, root, text)
     ) {
-      this.store.post(
-        `reply:${id}`,
-        channel,
-        root,
-        'Your answer was sent to the original Codex request.',
-      );
+      this.store.post(`reply:${id}`, channel, root, this.voice.say('answerSent'));
       return;
     }
     const bound = this.store.binding(channel, root);
     const sessions = await this.adapter.sessions();
     const session = selectSession(sessions, bound);
     if (!session) {
-      if (bound)
-        this.store.post(
-          `stale:${id}`,
-          channel,
-          root,
-          'The mapped session is no longer loaded. Say “sessions” to select it explicitly. Your instruction was not sent.',
-        );
+      if (bound) this.store.post(`stale:${id}`, channel, root, this.voice.say('stale'));
       else await this.choose(channel, root);
       return;
     }
     this.store.bind(channel, root, session.id);
     if (intent === 'status') {
-      this.store.post(
-        `status:${id}`,
-        channel,
-        root,
-        statusText(session, await this.adapter.snapshot(session.id)),
+      const answer = statusReply(
+        session,
+        await this.adapter.snapshot(session.id),
+        text,
+        this.voice,
       );
-      return;
+      if (answer) {
+        this.store.post(`status:${id}`, channel, root, answer);
+        this.store.remember(channel, root, session.id, text, answer);
+        return;
+      }
     }
     const pendingNative = this.store.db
       .prepare(
@@ -256,12 +239,7 @@ export class SlackBridge {
         pendingNative ||
         !awaitsConversationalReply(await this.adapter.snapshot(session.id)))
     ) {
-      this.store.post(
-        `ambiguous:${id}`,
-        channel,
-        root,
-        'There is no single human-input request to answer here. Use the approval buttons, or send a specific instruction.',
-      );
+      this.store.post(`ambiguous:${id}`, channel, root, this.voice.say('ambiguous'));
       return;
     }
     if (intent === 'watch') {
@@ -271,7 +249,7 @@ export class SlackBridge {
           `watch:${id}`,
           channel,
           root,
-          'This session is already idle. Ask for status to see its latest result.',
+          this.voice.say('idleWatch', { project: session.project }),
         );
         return;
       }
@@ -288,7 +266,7 @@ export class SlackBridge {
         `watch:${id}`,
         channel,
         root,
-        'I’ll notify you when the current Codex turn finishes.',
+        this.voice.say('watch', { project: session.project }),
       );
       return;
     }
@@ -298,22 +276,33 @@ export class SlackBridge {
         `interrupt:${id}`,
         channel,
         root,
-        'Interruption requested for the active Codex turn.',
+        this.voice.say('interrupt', { project: session.project }),
       );
       return;
     }
-    const delivery = await this.adapter.deliver(session.id, text, `pigeon:${id}`);
+    const input = this.voice.runtimeInput(text, this.store.conversation(channel, root, session.id));
+    const delivery = await this.adapter.deliver(session.id, input, `pigeon:${id}`);
+    const turnId = delivery.turnId || delivery.turn?.id;
+    if (turnId) this.store.expectReply(session.id, turnId, channel, root, text);
     this.store.post(
       `delivered:${id}`,
       channel,
       root,
-      `${session.project}: ${delivery.mode === 'steered' ? 'delivered to the active turn' : 'sent to the existing session'}.`,
+      this.voice.say(intent === 'status' ? 'questionDelivered' : 'delivered', {
+        project: session.project,
+      }),
     );
   }
   private async tick() {
     if (this.busy || !this.running) return;
     this.busy = true;
     try {
+      if (Date.now() >= this.nextVoiceRefresh) {
+        this.nextVoiceRefresh = Date.now() + 5000;
+        try {
+          this.voice = new Voice(readConfig().personality);
+        } catch {}
+      }
       if (!this.rpc.connected && Date.now() >= this.reconnectAt) {
         try {
           await this.rpc.connect();
@@ -339,20 +328,7 @@ export class SlackBridge {
               await this.adapter.attach(session);
               this.subscribed.add(session);
               const snapshot = await this.adapter.snapshot(session);
-              const latest = snapshot.turns?.at(-1);
-              if (latest && latest.status !== 'inProgress')
-                await this.notification({
-                  method: 'turn/completed',
-                  params: { threadId: session, turn: latest },
-                });
-              const lastMessage = (snapshot.turns?.at(-1)?.items || []).findLast(
-                (item: any) => item.type === 'agentMessage' && item.text,
-              );
-              if (lastMessage)
-                await this.notification({
-                  method: 'item/completed',
-                  params: { threadId: session, item: lastMessage },
-                });
+              await this.notifications.recover(session, snapshot);
             } catch {}
           }
         }
@@ -363,12 +339,7 @@ export class SlackBridge {
             this.store.state(row.id, 'done');
           } catch {
             this.store.state(row.id, 'uncertain');
-            this.store.post(
-              `error:${row.id}`,
-              row.channel,
-              row.root,
-              'Delivery could not be confirmed. I will not replay this instruction. Check the session before sending it again.',
-            );
+            this.store.post(`error:${row.id}`, row.channel, row.root, this.voice.say('uncertain'));
             failure('delivery');
           }
         }
@@ -376,7 +347,7 @@ export class SlackBridge {
       this.approvals.expire();
       if (Date.now() >= this.nextPruneAt) {
         this.store.prune();
-        this.nextPruneAt = Date.now() + 3600000;
+        this.nextPruneAt = Date.now() + 60000;
       }
       for (const row of Date.now() >= this.nextPostAt ? this.store.outgoing().slice(0, 1) : []) {
         try {

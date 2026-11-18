@@ -1,3 +1,4 @@
+import { Voice } from './conversation/voice.js';
 import { randomUUID } from 'node:crypto';
 import { Store } from './store.js';
 import { CodexRpc, type RpcMessage } from './runtimes/codex/rpc.js';
@@ -10,6 +11,7 @@ export class Approvals {
   constructor(
     private store: Store,
     private rpc: CodexRpc,
+    private voice: () => Voice = () => new Voice(),
   ) {}
   disconnect() {
     this.store.invalidateApprovals();
@@ -28,7 +30,7 @@ export class Approvals {
         `local-input:${this.generation}:${JSON.stringify(m.id)}`,
         target.channel,
         target.root,
-        'Codex needs input that must be answered locally (a private field or a form with multiple questions). Open Codex to respond. The question contents were not forwarded.',
+        this.voice().say('localInput'),
       );
       return;
     }
@@ -41,6 +43,25 @@ export class Approvals {
       return;
     const token = randomUUID(),
       expires = Date.now() + 10 * 60 * 1000;
+    const command = m.method === 'item/commandExecution/requestApproval';
+    // Refuse to offer truncated, additional-permission, or unknown approval variants remotely.
+    let actionable =
+      command &&
+      !!p.command &&
+      p.command.length < 2200 &&
+      !p.additionalPermissions &&
+      (!p.availableDecisions || p.availableDecisions.includes('accept'));
+    const text = command
+      ? this.commandText(p)
+      : this.voice().say('nativeQuestion', {
+          question: p.questions
+            .map(
+              (q: any) =>
+                `${q.header}: ${q.question}\n${(q.options || []).map((o: any) => o.label + ': ' + o.description).join('\n')}`,
+            )
+            .join('\n\n'),
+        });
+    actionable = actionable && text.length <= 2900;
     this.store.db
       .prepare('INSERT INTO approvals VALUES(?,?,?,?,?,?,?,?,?,?)')
       .run(
@@ -51,22 +72,10 @@ export class Approvals {
         target.channel,
         target.root,
         m.method!,
-        JSON.stringify(p),
+        JSON.stringify({ ...p, _pigeonCanApprove: actionable }),
         'pending',
         expires,
       );
-    const command = m.method === 'item/commandExecution/requestApproval';
-    // Refuse to offer truncated, additional-permission, or unknown approval variants remotely.
-    let actionable =
-      command &&
-      !!p.command &&
-      p.command.length < 2200 &&
-      !p.additionalPermissions &&
-      (!p.availableDecisions || p.availableDecisions.includes('accept'));
-    const text = command
-      ? `Codex requests a one-time command approval.\nProject directory: ${p.cwd || 'unknown'}\nAction: ${p.command || 'not supplied'}\nReason: ${p.reason || 'not supplied'}`
-      : `Codex needs your input:\n${(p.questions || []).map((q: any) => `${q.header}: ${q.question}\n${(q.options || []).map((o: any) => o.label + ': ' + o.description).join('\n')}`).join('\n\n')}\nReply in this thread. This response will be delivered to the original request.`;
-    actionable = actionable && text.length <= 2900;
     const blocks: any[] = [
       { type: 'section', text: { type: 'plain_text', text: text.slice(0, 2900) } },
     ];
@@ -78,7 +87,7 @@ export class Approvals {
             ? [
                 {
                   type: 'button',
-                  text: { type: 'plain_text', text: 'Approve once' },
+                  text: { type: 'plain_text', text: this.voice().say('approve') },
                   action_id: 'approval_accept',
                   value: token,
                 },
@@ -86,7 +95,7 @@ export class Approvals {
             : []),
           {
             type: 'button',
-            text: { type: 'plain_text', text: 'Deny' },
+            text: { type: 'plain_text', text: this.voice().say('deny') },
             action_id: 'approval_decline',
             value: token,
           },
@@ -97,10 +106,17 @@ export class Approvals {
         type: 'section',
         text: {
           type: 'plain_text',
-          text: 'Review the full action in Codex. This request cannot be approved remotely.',
+          text: this.voice().say('localApproval'),
         },
       });
     this.store.post(`approval:${token}`, target.channel, target.root, text, blocks);
+  }
+  private commandText(p: any) {
+    return this.voice().say('commandApproval', {
+      cwd: p.cwd || 'unknown',
+      command: p.command || 'not supplied',
+      reason: p.reason || 'not supplied',
+    });
   }
   resolved(id: unknown) {
     this.store.db
@@ -124,8 +140,7 @@ export class Approvals {
       decision === 'accept' &&
       (!p.command ||
         p.command.length >= 2200 ||
-        `Codex requests a one-time command approval.\nProject directory: ${p.cwd || 'unknown'}\nAction: ${p.command || 'not supplied'}\nReason: ${p.reason || 'not supplied'}`
-          .length > 2900 ||
+        p._pigeonCanApprove !== true ||
         p.additionalPermissions ||
         (p.availableDecisions && !p.availableDecisions.includes('accept')))
     )

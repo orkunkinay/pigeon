@@ -44,7 +44,7 @@ test('an offline stop cannot interrupt a different future turn', () => {
   );
   ingress.receive({ ...event, event: { ...event.event, text: 'Pause.' } });
   assert.equal(store.queued().length, 0);
-  assert.match(store.outgoing()[0].text, /not sent or queued/);
+  assert.match(store.outgoing()[0].text, /couldn’t send[\s\S]*haven’t queued/);
   store.close();
 });
 test('pairing requires the unpredictable local phrase in the correct workspace', () => {

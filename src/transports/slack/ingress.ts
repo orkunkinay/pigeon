@@ -1,3 +1,4 @@
+import { Voice } from '../../conversation/voice.js';
 import { timingSafeEqual } from 'node:crypto';
 import { saveConfig, type Config } from '../../config.js';
 import { Store } from '../../store.js';
@@ -19,6 +20,7 @@ export class SlackIngress {
     private connected: () => boolean,
     private pairingCode?: string,
     private persist: (config: Config) => void = saveConfig,
+    private voice: () => Voice = () => new Voice(),
   ) {}
   receive(body: any) {
     const event = body?.event;
@@ -44,12 +46,7 @@ export class SlackIngress {
       this.config.dmChannel = event.channel;
       this.persist(this.config);
       this.pairingCode = undefined;
-      this.store.post(
-        'paired',
-        event.channel,
-        event.ts,
-        'Pigeon is paired with you. Say “sessions” to choose your coding session.',
-      );
+      this.store.post('paired', event.channel, event.ts, this.voice().say('paired'));
       log('paired');
       return;
     }
@@ -60,7 +57,7 @@ export class SlackIngress {
         `offline-stop:${eventId}`,
         event.channel,
         event.thread_ts || event.ts,
-        'Codex is disconnected. The stop request was not sent or queued; stop it locally if needed.',
+        this.voice().say('offlineStop'),
       );
       return;
     }
@@ -75,7 +72,7 @@ export class SlackIngress {
         `queued:${eventId}`,
         event.channel,
         event.thread_ts || event.ts,
-        'Codex is disconnected. Your message is queued for at most five minutes and will use this thread’s session mapping.',
+        this.voice().say('queued'),
       );
   }
 }
