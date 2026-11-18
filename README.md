@@ -13,6 +13,10 @@ approvals, and structured human input have been tested against Codex CLI 0.169.0
 and its shared daemon 0.169.1. See the [evidence](docs/TESTING.md), including the
 restrictions below. This package has not been published to npm.
 
+**Visual docs:** an interactive demo, annotated Slack setup guide, routing rules, troubleshooting
+and architecture notes live in [`website/`](website/index.html). It is a static site; preview it
+with `python3 -m http.server -d website` and rebuild the docs pages with `node website/build.mjs`.
+
 ![Pigeon conversation showing a real session continuity test](docs/demo.svg)
 
 ```text
