@@ -16,6 +16,9 @@ import { Store } from './store.js';
 import { SlackBridge } from './transports/slack/bridge.js';
 import { setup } from './setup.js';
 import { installService, removeService } from './daemon/service.js';
+import { installAgentIntegration, removeAgentIntegration, registration } from './agent/install.js';
+import { stageRuntime } from './daemon/runtime.js';
+import { runMcp } from './agent/mcp.js';
 const exec = promisify(execFile);
 const command = process.argv[2] || 'help';
 async function sessionList() {
@@ -28,6 +31,20 @@ async function sessionList() {
   }
 }
 async function run() {
+  if (command === 'mcp') {
+    await runMcp();
+    return;
+  }
+  if (command === 'install-agent') {
+    const config = readConfig();
+    console.log(
+      await installAgentIntegration(
+        config.codexBin,
+        await stageRuntime(fileURLToPath(import.meta.url)),
+      ),
+    );
+    return;
+  }
   if (command === 'voice') {
     const config = readConfig();
     if (process.argv[3] === 'reset') {
@@ -58,6 +75,21 @@ async function run() {
       readConfig();
       configured = true;
     } catch {}
+    if (configured && readConfig().userId) {
+      const config = readConfig();
+      const auth = await new WebClient(await readSecret('bot'), {
+        logger: slackLogger,
+        timeout: 10000,
+        retryConfig: { retries: 0 },
+      }).auth.test();
+      if (auth.team_id !== config.teamId) throw Error('Slack workspace mismatch');
+      const cli = await installService(fileURLToPath(import.meta.url));
+      await installAgentIntegration(config.codexBin, cli);
+      console.log(
+        'Pigeon updated. Skill and MCP registered; fresh sessions load global awareness.',
+      );
+      return;
+    }
     if (configured) await removeService();
     try {
       await setup(stdout.trim());
@@ -70,8 +102,9 @@ async function run() {
     return;
   }
   if (command === 'install-service') {
-    readConfig();
-    await installService(fileURLToPath(import.meta.url));
+    const config = readConfig();
+    const cli = await installService(fileURLToPath(import.meta.url));
+    await installAgentIntegration(config.codexBin, cli);
     console.log('Pigeon LaunchAgent installed.');
     return;
   }
@@ -125,6 +158,9 @@ async function run() {
       );
     }
     if (command === 'doctor' && config) {
+      console.log(
+        `Pigeon MCP registration: ${(await registration(config.codexBin)) ? 'present' : 'missing — run pigeon install-agent'}`,
+      );
       try {
         const auth = await new WebClient(await readSecret('bot'), {
           logger: slackLogger,
@@ -166,6 +202,11 @@ async function run() {
     return;
   }
   if (command === 'uninstall') {
+    const preserved = await removeAgentIntegration(readConfig().codexBin);
+    if (preserved.length)
+      throw Error(
+        `User-modified integration files preserved: ${preserved.join(', ')}. Service and credentials remain until these are reviewed.`,
+      );
     await removeService();
     await deleteSecrets();
     for (const name of [
@@ -177,6 +218,7 @@ async function run() {
       'pigeon.log',
       'daemon.lock',
       'runtimes',
+      'companion.sock',
     ])
       await rm(join(home, name), { recursive: true, force: true });
     await rmdir(home).catch(() => {});
@@ -186,7 +228,7 @@ async function run() {
     return;
   }
   console.log(
-    'Pigeon — your coding agent is one message away.\n\npigeon setup           Connect Slack and pair your user\npigeon status          Check connection and service state\npigeon doctor          Diagnose runtime and credentials\npigeon sessions        List live shared-daemon sessions\npigeon voice           Show or customize the colleague voice\npigeon pair            Pair after a previously saved setup\npigeon install-service Install the macOS background service\npigeon logs            Follow redacted service logs\npigeon uninstall       Remove local Pigeon installation',
+    'Pigeon — your coding agent is one message away.\n\npigeon setup           Connect Slack, install skill and MCP\npigeon status          Check connection and service state\npigeon doctor          Diagnose runtime and credentials\npigeon sessions        List live shared-daemon sessions\npigeon voice           Show or customize the colleague voice\npigeon pair            Pair after a previously saved setup\npigeon install-service Install the macOS background service\npigeon install-agent   Install or repair agent awareness\npigeon logs            Follow redacted service logs\npigeon uninstall       Remove local Pigeon installation',
   );
 }
 async function daemon(pair: boolean) {
@@ -248,7 +290,8 @@ async function daemon(pair: boolean) {
     if (pair) {
       while (!config.userId) await new Promise((r) => setTimeout(r, 250));
       await cleanup();
-      await installService(fileURLToPath(import.meta.url));
+      const cli = await installService(fileURLToPath(import.meta.url));
+      await installAgentIntegration(config.codexBin, cli);
       console.log('Paired. Pigeon will start automatically when you log in.');
       process.exit(0);
     }

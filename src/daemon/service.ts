@@ -38,6 +38,7 @@ export async function installService(cli: string) {
       await new Promise((r) => setTimeout(r, 200));
     }
   }
+  return stableCli;
 }
 export async function removeService() {
   await exec('/bin/launchctl', ['bootout', `gui/${process.getuid!()}/${label}`]).catch(() => {});

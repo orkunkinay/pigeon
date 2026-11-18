@@ -13,6 +13,8 @@ import { classify, selectSession, awaitsConversationalReply } from '../../router
 import { log, failure, slackLogger } from '../../log.js';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { HumanCommunication } from '../../agent/coordinator.js';
+import { serveAgentCalls } from '../../agent/ipc.js';
 const { App, SocketModeReceiver } = bolt;
 export { authorized } from './ingress.js';
 import { authorized, SlackIngress } from './ingress.js';
@@ -37,6 +39,8 @@ export class SlackBridge {
   private nextPostAt = 0;
   private nextPruneAt = 0;
   private nextEnsureAt = 0;
+  readonly human: HumanCommunication;
+  private stopAgentCalls?: () => Promise<void>;
   constructor(
     readonly config: Config,
     readonly store: Store,
@@ -46,6 +50,28 @@ export class SlackBridge {
     private ensureRuntime?: () => Promise<void>,
   ) {
     this.voice = new Voice(config.personality);
+    this.human = new HumanCommunication(
+      store,
+      () => this.voice,
+      () => ({
+        connected: this.slackConnected,
+        paired: !!config.userId,
+        runtime: this.rpc.connected,
+      }),
+      (id) => this.adapter.assertLoaded(id),
+      () => config.dmChannel,
+      async (channel, text, id) => {
+        const posted = await this.app.client.chat.postMessage({
+          channel,
+          text,
+          unfurl_links: false,
+          unfurl_media: false,
+          parse: 'none',
+        });
+        if (!posted.ts) throw Error('Message acknowledgment missing');
+        return posted.ts;
+      },
+    );
     this.notifications = new Notifications(
       store,
       () => this.voice,
@@ -152,6 +178,7 @@ export class SlackBridge {
 
   async start() {
     await this.app.start();
+    this.stopAgentCalls = await serveAgentCalls((call, signal) => this.human.call(call, signal));
     this.running = true;
     log('slack_connected');
     this.timer = setInterval(() => void this.tick().catch(() => failure('bridge_tick')), 1000);
@@ -159,6 +186,7 @@ export class SlackBridge {
   }
   async stop() {
     this.running = false;
+    await this.stopAgentCalls?.();
     if (this.timer) clearInterval(this.timer);
     while (this.busy) await new Promise((r) => setTimeout(r, 25));
     await this.serial;
@@ -195,6 +223,13 @@ export class SlackBridge {
   private async route(row: any) {
     const { channel, root, text, id } = row;
     const intent = classify(text);
+    if (
+      intent !== 'interrupt' &&
+      intent !== 'status' &&
+      intent !== 'sessions' &&
+      this.human?.answer(channel, root, text)
+    )
+      return;
     if (intent === 'sessions') {
       await this.choose(channel, root);
       return;
@@ -350,6 +385,7 @@ export class SlackBridge {
       this.approvals.expire();
       if (Date.now() >= this.nextPruneAt) {
         this.store.prune();
+        this.human.prune();
         this.nextPruneAt = Date.now() + 60000;
       }
       for (const row of Date.now() >= this.nextPostAt ? this.store.outgoing().slice(0, 1) : []) {
