@@ -15,7 +15,7 @@ async function run(){
  if(command==='status'||command==='doctor'){
   let config;try{config=readConfig();console.log(`Slack: configured for ${config.teamId}; ${config.userId?'paired':'not paired — run pigeon pair'}`);}catch{console.log('Slack: not configured — run pigeon setup');}
   for(const k of ['bot','app'] as const)try{await readSecret(k);console.log(`Keychain ${k} credential: available`);}catch{console.log(`Keychain ${k} credential: unavailable`);}
-  try{const health=JSON.parse(await readFile(join(home,'health.json'),'utf8'));console.log(`Background service: ${Date.now()-health.time<30000?'running':'stale or stopped'}; Codex: ${health.codex?'connected':'disconnected'}`);}catch{console.log('Background service: not running');}
+  try{const health=JSON.parse(await readFile(join(home,'health.json'),'utf8'));try{process.kill(health.pid,0);}catch{health.time=0;}console.log(`Background service: ${Date.now()-health.time<30000?'running':'stale or stopped'}; Codex: ${health.codex?'connected':'disconnected'}`);}catch{console.log('Background service: not running');}
   try{const s=await sessionList();console.log(`Codex shared runtime: connected; ${s.length} live sessions`);console.log('Only sessions loaded in this daemon are controllable. Embedded/private app servers are unsupported.');}catch{console.log('Codex control unavailable. Open Codex normally; check codex app-server daemon version. Pigeon never resumes history as a substitute.');}
   if(command==='doctor'&&config){try{const r=await exec(config.codexBin,['app-server','daemon','version']);console.log(r.stdout.trim());}catch{console.log('Codex executable unavailable. Run setup again.');}}
   return;

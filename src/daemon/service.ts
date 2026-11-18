@@ -11,6 +11,9 @@ export async function installService(cli:string){
  await writeFile(join(home,'pigeon.log'),'',{flag:'a',mode:0o600});
  await writeFile(plistPath,plist(process.execPath,resolve(cli),process.env.PATH||'/usr/bin:/bin'),{mode:0o600});
  await exec('/bin/launchctl',['bootout',`gui/${process.getuid!()}/${label}`]).catch(()=>{});
- await exec('/bin/launchctl',['bootstrap',`gui/${process.getuid!()}`,plistPath]);
+ for(let attempt=0;;attempt++){
+  try{await exec('/bin/launchctl',['bootstrap',`gui/${process.getuid!()}`,plistPath]);break;}
+  catch(e){if(attempt>=10)throw e;await new Promise(r=>setTimeout(r,200));}
+ }
 }
 export async function removeService(){await exec('/bin/launchctl',['bootout',`gui/${process.getuid!()}/${label}`]).catch(()=>{});await rm(plistPath,{force:true});}
