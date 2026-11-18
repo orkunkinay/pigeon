@@ -10,8 +10,8 @@ runtime-dependent; version numbers alone do not guarantee attachment.
 | Attach to that live worker | Implemented and verified | Same original thread and active-turn IDs; worker recalled both context markers. |
 | Slack → original session → Slack | Implemented and verified | Actual human Slack message and bot response; `slack-proof.json`. |
 | Steering an active turn | Implemented and verified | `turn/steer`, guarded by `expectedTurnId`; `attachment-proof.json`. |
-| Status without an agent turn | Implemented with restrictions | Recognized phrases read runtime state; tests cover routing. No independent summarizing model. |
-| Interrupt active execution | Implemented with restrictions | Uses native interrupt; no OS process checkpoint. |
+| Status without an agent turn | Implemented and verified | Real Slack test added no turn or user item. Phrase recognition remains deterministic. |
+| Interrupt active execution | Implemented and verified | Real Slack request interrupted the exact active turn; no OS process checkpoint. |
 | Human command approval | Implemented and verified | Exact harmless command accepted once in Slack, original turn completed. |
 | Structured user input | Implemented and verified | Single-question native request in Plan mode; answer delivered via Slack. |
 | Default-mode question | Implemented with restrictions | Agent asked conversationally and received a normal next-turn answer; no native tool was used in that test. |
@@ -26,7 +26,7 @@ runtime-dependent; version numbers alone do not guarantee attachment.
 | IDE sharing the daemon | Implemented with restrictions | Existing daemon exposed VS Code-sourced sessions. No claim for every extension version. |
 | Dedicated Codex desktop app | Experimental / unverified | No test of this surface on this machine. |
 | MCP / Slack screenshots | Unsupported | Neither is shipped in this preview. |
-| Clean package install | See TESTING.md | Separate from full fresh-account Slack onboarding. |
+| Clean package install | Implemented and verified | Empty-prefix install; staged CLI worked after source deletion. Separate from fresh-account Slack onboarding. |
 
 Pigeon does not take ownership of saved thread history or bypass active-writer
 locks. An old Codex client can fall back to an embedded runtime even while a daemon

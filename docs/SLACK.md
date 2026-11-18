@@ -23,7 +23,6 @@ computer-use assistant can perform those same steps when available.
 | --- | --- |
 | `chat:write` | Post the agent’s messages and interactive controls. |
 | `im:history` | Receive private bot DM events; the explicit integration verifier also reads its own test thread. |
-| `im:write` | Allow direct conversation creation for future onboarding improvements. Current pairing starts from the user’s DM. |
 | App token `connections:write` | Open Socket Mode connections for this app. |
 
 No public/private channel-history, search, workspace-directory, file-upload, or
@@ -34,6 +33,7 @@ The bot token’s Slack capabilities are broader than Pigeon’s application all
 protect the token accordingly. A workspace administrator can revoke the app;
 Keychain storage does not make a compromised Slack account safe.
 
-To change workspace or credentials, stop Pigeon’s LaunchAgent before rerunning setup.
-The current preview requires pairing again after a new setup. Do not revoke other apps’
+Rerun `pigeon setup` to refresh credentials. It stops Pigeon’s service during the
+flow and preserves pairing when the workspace stays the same. Leave the app-token
+field blank to keep its saved Keychain value. A different workspace requires pairing again. Do not revoke other apps’
 tokens or change workspace security controls to get Pigeon working.
