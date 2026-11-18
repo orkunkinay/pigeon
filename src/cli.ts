@@ -219,6 +219,7 @@ async function run() {
       'pigeon.log',
       'daemon.lock',
       'runtimes',
+      'discussions',
       'companion.sock',
     ])
       await rm(join(home, name), { recursive: true, force: true });

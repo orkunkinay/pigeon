@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { home } from '../config.js';
-import { skill, awareness } from './skill.js';
+import { skill, skillFiles, awareness } from './skill.js';
 const exec = promisify(execFile);
 type Registration = { command: string; args: string[]; env: Record<string, string> };
 type Receipt = {
@@ -18,6 +18,7 @@ type Receipt = {
   priorSkill?: string;
   launcher?: { path: string; content: string };
   configSnapshot?: string;
+  files?: Record<string, string>;
 };
 export type InstallPaths = { userHome: string; codexHome: string; pigeonHome: string };
 const defaults = (): InstallPaths => ({
@@ -88,6 +89,15 @@ export async function installAgentIntegration(
   await regular(dirname(skillPath));
   await regular(skillPath);
   const existingSkill = await contents(skillPath);
+  for (const [name, content] of Object.entries(skillFiles)) {
+    const path = join(dirname(skillPath), name);
+    await regular(dirname(path));
+    await regular(path);
+    const old = await contents(path);
+    const owned = previous?.files?.[name] ?? (name === 'SKILL.md' ? previous?.skill : undefined);
+    if (old && old !== owned)
+      throw Error('A Pigeon skill file was edited or is not owned; it was preserved.');
+  }
   if (
     existingSkill &&
     (!previous ||
@@ -116,7 +126,11 @@ export async function installAgentIntegration(
   let before = await contents(instructionPath);
   let insertion: string;
   if (previous?.instructionPath === instructionPath && before.includes(previous.insertion)) {
-    insertion = previous.insertion;
+    insertion = previous.insertion.replace(
+      /<!-- pigeon:begin -->[\s\S]*<!-- pigeon:end -->/,
+      block,
+    );
+    before = before.replace(previous.insertion, insertion);
   } else {
     if (before.includes('<!-- pigeon:begin -->'))
       throw Error('Pigeon instruction block was edited; preserving it for review.');
@@ -158,6 +172,7 @@ export async function installAgentIntegration(
     priorSkill: existingSkill || undefined,
     launcher,
     configSnapshot: previous?.configSnapshot,
+    files: skillFiles,
   };
   await mkdir(paths.pigeonHome, { recursive: true, mode: 0o700 });
   await writeFile(receiptPath + '.tmp', JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
@@ -171,9 +186,13 @@ export async function installAgentIntegration(
       await writeFile(previous.instructionPath, old.replace(previous.insertion, ''));
   }
   await mkdir(dirname(skillPath), { recursive: true });
-  await writeFile(skillPath, skill);
+  for (const [name, content] of Object.entries(skillFiles)) {
+    const path = join(dirname(skillPath), name);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, content);
+  }
   await mkdir(dirname(instructionPath), { recursive: true });
-  if (!before.includes(insertion)) await writeFile(instructionPath, before + insertion);
+  await writeFile(instructionPath, before.includes(insertion) ? before : before + insertion);
   if (!matches(current, expected))
     await exec(
       codex,
@@ -208,11 +227,21 @@ export async function removeAgentIntegration(codex: string, paths = defaults()) 
   const preserved: string[] = [];
   await regular(receipt.skillPath);
   await regular(receipt.instructionPath);
-  const installedSkill = await contents(receipt.skillPath);
-  if (!installedSkill || [receipt.skill, receipt.priorSkill].includes(installedSkill)) {
-    await rm(receipt.skillPath, { force: true });
-    await rmdir(dirname(receipt.skillPath)).catch(() => {});
-  } else preserved.push(receipt.skillPath);
+  const ownedFiles = receipt.files || { 'SKILL.md': receipt.skill };
+  for (const [name, content] of Object.entries(ownedFiles)) {
+    const path = join(dirname(receipt.skillPath), name);
+    await regular(path);
+    const installed = await contents(path);
+    if (
+      !installed ||
+      installed === content ||
+      (name === 'SKILL.md' && installed === receipt.priorSkill)
+    )
+      await rm(path, { force: true });
+    else preserved.push(path);
+  }
+  for (const dir of ['agents', 'references', ''])
+    await rmdir(join(dirname(receipt.skillPath), dir)).catch(() => {});
   const instructions = await contents(receipt.instructionPath);
   if (instructions.includes(receipt.insertion))
     await writeFile(receipt.instructionPath, instructions.replace(receipt.insertion, ''));

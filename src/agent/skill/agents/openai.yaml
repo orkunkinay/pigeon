@@ -1,0 +1,11 @@
+interface:
+  display_name: 'Pigeon'
+  short_description: 'Reach your human without interrupting main work'
+  default_prompt: 'Use $pigeon when human input or a requested remote update is needed.'
+policy:
+  allow_implicit_invocation: true
+dependencies:
+  tools:
+    - type: 'mcp'
+      value: 'pigeon'
+      description: 'Local human communication through the installed companion'

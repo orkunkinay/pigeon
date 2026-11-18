@@ -9,6 +9,7 @@ import {
   removeAgentIntegration,
   registration,
 } from '../src/agent/install.js';
+import { awareness } from '../src/agent/skill.js';
 let codex = '';
 try {
   codex = execFileSync('/usr/bin/which', ['codex'], {
@@ -52,6 +53,37 @@ test(
       );
       assert.equal(await registration(codex, p), undefined);
       assert.deepEqual(await removeAgentIntegration(codex, p), []);
+    } finally {
+      await rm(p.root, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  'upgrades replace only the owned awareness paragraph and include supporting skill files',
+  { skip: !codex },
+  async () => {
+    const p = await paths();
+    try {
+      const installed = await installAgentIntegration(codex, '/stable/cli.js', p);
+      const receiptPath = join(p.pigeonHome, 'agent-integration.json');
+      const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
+      const legacy = receipt.insertion.replace(awareness, 'Legacy Pigeon instructions.');
+      receipt.insertion = legacy;
+      await writeFile(receiptPath, JSON.stringify(receipt));
+      await writeFile(installed.instructionPath, 'User before\n' + legacy + 'User after\n');
+      await installAgentIntegration(codex, '/new-stable/cli.js', p);
+      const updated = await readFile(installed.instructionPath, 'utf8');
+      assert.match(updated, /Talk to the fork\. Direct the main/);
+      assert.ok(!updated.includes('Legacy Pigeon'));
+      assert.ok(updated.startsWith('User before\n'));
+      assert.ok(updated.endsWith('User after\n'));
+      assert.match(
+        await readFile(join(p.userHome, '.agents/skills/pigeon/references/routing.md'), 'utf8'),
+        /process checkpoint/,
+      );
+      assert.deepEqual(await removeAgentIntegration(codex, p), []);
+      assert.equal(await readFile(installed.instructionPath, 'utf8'), 'User before\nUser after\n');
     } finally {
       await rm(p.root, { recursive: true, force: true });
     }
