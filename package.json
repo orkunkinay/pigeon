@@ -10,7 +10,8 @@
     "dist",
     "README.md",
     "LICENSE",
-    "slack-manifest.json"
+    "slack-manifest.json",
+    "npm-shrinkwrap.json"
   ],
   "engines": {
     "node": ">=24.0.0"

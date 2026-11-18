@@ -11,6 +11,12 @@ export async function stageRuntime(cli: string): Promise<string> {
   const runtimeRoot = join(home, 'runtimes');
   if (root.startsWith(runtimeRoot + sep)) return resolve(cli);
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+  let lockName = 'npm-shrinkwrap.json';
+  try {
+    await stat(join(root, lockName));
+  } catch {
+    lockName = 'package-lock.json';
+  }
   const hash = createHash('sha256');
   // Include the entire build, not just version, so local fixes receive a distinct immutable install.
   const { readdir } = await import('node:fs/promises');
@@ -24,7 +30,7 @@ export async function stageRuntime(cli: string): Promise<string> {
     }
   }
   await digest(join(root, 'dist'));
-  hash.update(await readFile(join(root, 'package-lock.json')));
+  hash.update(await readFile(join(root, lockName)));
   const destination = join(runtimeRoot, `${manifest.version}-${hash.digest('hex').slice(0, 12)}`);
   try {
     await stat(join(destination, 'ready'));
@@ -34,8 +40,8 @@ export async function stageRuntime(cli: string): Promise<string> {
   const staging = await mkdtemp(join(runtimeRoot, '.install-'));
   try {
     await cp(join(root, 'dist'), join(staging, 'dist'), { recursive: true });
-    for (const name of ['package-lock.json', 'slack-manifest.json'])
-      await cp(join(root, name), join(staging, name));
+    await cp(join(root, lockName), join(staging, lockName));
+    await cp(join(root, 'slack-manifest.json'), join(staging, 'slack-manifest.json'));
     delete manifest.scripts;
     await writeFile(join(staging, 'package.json'), JSON.stringify(manifest));
     await exec('npm', ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], {

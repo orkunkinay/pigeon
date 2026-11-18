@@ -159,6 +159,14 @@ async function daemon(pair: boolean) {
   // Start is idempotent: keep future normal CLI launches on the shared runtime. Never restart or upgrade Codex.
   const store = new Store(join(home, 'pigeon.sqlite'));
   let bridge: SlackBridge | undefined;
+  let cleaned = false;
+  const cleanup = async () => {
+    if (cleaned) return;
+    cleaned = true;
+    await bridge?.stop().catch(() => {});
+    store.close();
+    await rm(lock, { recursive: true, force: true });
+  };
   try {
     const code = pair && !config.userId ? randomBytes(12).toString('hex') : undefined;
     if (!config.userId && !code) throw Error('Slack user not paired. Run pigeon pair.');
@@ -174,33 +182,21 @@ async function daemon(pair: boolean) {
       },
     );
     await bridge.start();
-    let stopping = false;
     const stop = async () => {
-      if (stopping) return;
-      stopping = true;
-      await bridge!.stop();
-      store.close();
-      await rm(lock, { recursive: true, force: true });
+      await cleanup();
       process.exit(0);
     };
     process.on('SIGTERM', () => void stop());
     process.on('SIGINT', () => void stop());
     if (pair) {
-      const check = setInterval(async () => {
-        if (!config.userId) return;
-        clearInterval(check);
-        await bridge!.stop();
-        store.close();
-        await rm(lock, { recursive: true, force: true });
-        await installService(fileURLToPath(import.meta.url));
-        console.log('Paired. Pigeon will start automatically when you log in.');
-        process.exit(0);
-      }, 1000);
+      while (!config.userId) await new Promise((r) => setTimeout(r, 250));
+      await cleanup();
+      await installService(fileURLToPath(import.meta.url));
+      console.log('Paired. Pigeon will start automatically when you log in.');
+      process.exit(0);
     }
   } catch (e) {
-    await bridge?.stop().catch(() => {});
-    store.close();
-    await rm(lock, { recursive: true, force: true });
+    await cleanup();
     throw e;
   }
 }
