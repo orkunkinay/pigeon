@@ -4,6 +4,7 @@ import type { Session } from './runtimes/codex/adapter.js';
 export type Intent = 'status' | 'sessions' | 'interrupt' | 'watch' | 'instruction' | 'ambiguous';
 export function classify(text: string): Intent {
   const t = normalized(text);
+  if (/^(hey|hi|hello|hola|merhaba)$/.test(t)) return 'status';
   if (/^(sessions|projects|list sessions|show sessions|help)$/.test(t)) return 'sessions';
   if (/^(stop|pause|stop working|stop the current task|interrupt|cancel the current task)$/.test(t))
     return 'interrupt';

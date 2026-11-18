@@ -58,7 +58,7 @@ npm run build
 npm pack
 ```
 
-The local suite currently has 20 tests, including a real Unix WebSocket fixture,
+The local suite currently has 44 tests, including a real Unix WebSocket fixture,
 out-of-order RPC response correlation, disconnect failure, crash recovery, expired
 queues, durable Unicode chunking, actual ingress authorization, secret-input exclusion,
 and one-use approval controls. CI is configured; no remote CI run has occurred.
@@ -76,3 +76,12 @@ Real experiments are explicit scripts, outside the default test command:
 Read these scripts before running them. Native experiments use your normal Codex
 access, and approval/input probes require an actual human response in Slack.
 They never automatically approve themselves.
+
+## Conversational experience regression coverage
+
+The colleague update adds tests for natural status/follow-up routing, actual test-output
+extraction, unknown-detail delegation, accepted-delivery acknowledgments, session-scoped
+context, real SQLite reopen across a long pause, quiet/important/updates notification
+policies, interrupted/failed turns, a fast-response acceptance race, locale/formality/
+verbosity controls, and credential-free CLI configuration. The original core live-test
+JSON files above remain historical evidence from their recorded dates/commits.

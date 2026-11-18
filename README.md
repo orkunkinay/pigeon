@@ -63,10 +63,22 @@ form. It does not offer a fictional one-click OAuth flow. See [Slack setup](docs
 | A reply to a structured question | Resolves that exact pending request when there is one question. |
 | Approve once / Deny | Answers a native command-approval request with a one-time decision. |
 
-Agent messages arrive proactively after you connect the session. For an
+Important agent messages and completed results arrive proactively after you connect the session. For an
 Authenticator prompt, the agent can report the displayed number through that
 conversation. Approve in the provider’s own trusted app; the agent must check
 whether authentication succeeded. Pigeon does not access Authenticator.
+
+## A colleague you can message
+
+Pigeon’s default `colleague` voice is casual, concise and honest about what it has
+actually observed. “What’s failing?” can follow a status question; “fix those first”
+keeps the same project and the previous exchange. Unknown details go to the original
+Codex worker, with no extra model API.
+
+Routine progress stays quiet. Human requests, meaningful failures, requested updates
+and completed turns get through. Customize with `pigeon voice`, for example
+`pigeon voice set humour off` or `pigeon voice set language tr`.
+See [personality and conversation](docs/PERSONALITY.md) for all options and limits.
 
 ## Compatibility and boundaries
 

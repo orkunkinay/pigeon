@@ -96,7 +96,14 @@ export function statusReply(
     ]
       .filter(Boolean)
       .join(', ');
-    return heading + '\n' + voice.say('tests', { project: session.project, result });
+    const attention = flags.length > 0 || thread.status?.type === 'systemError';
+    return (
+      (attention ? heading + '\n' : '') +
+      voice.say('tests', { project: session.project, result }) +
+      (attention
+        ? ''
+        : ' ' + voice.say(thread.status?.type === 'active' ? 'stillWorking' : 'idleNow'))
+    );
   }
   const items = thread.turns?.at(-1)?.items || [];
   const recent = items.findLast((i: any) => i.type === 'agentMessage' && i.text);

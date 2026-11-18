@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-18T11:00:16.996Z",
+  "threadId": "01a1ec1f-1ebf-74a1-8eb8-2da2aaa0e46c",
+  "turnId": "01a1ee3b-1063-7030-961c-0e4e1746b3b4",
+  "liveStatusRouteVerified": true,
+  "statusAddedNoTurnOrSteer": true,
+  "slackHumanFollowupAndWorkerAnswerVerified": true,
+  "statusExample": "44 passed, 0 failed in pigeon’s latest test run. Codex is still working.",
+  "voice": {
+    "voice": "colleague",
+    "formality": "casual",
+    "humour": "dry",
+    "verbosity": "brief",
+    "proactiveness": "important",
+    "language": "en",
+    "address": null
+  },
+  "contextPolicy": "One bounded exchange per mapped thread; no short timed expiry; cleared on project switch.",
+  "checks": "44 local tests including routing, CLI, notification policy, approval safeguards and persistent follow-ups"
+}

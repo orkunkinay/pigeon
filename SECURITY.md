@@ -28,8 +28,11 @@ surfaces. This preview has not undergone an independent security audit.
   local commit can produce a duplicate notification. Exactly-once distributed posting
   is not claimed.
 - Pending payloads are stored locally in SQLite inside a mode-0700 directory. Main
-  database mode is 0600; WAL files are protected by the directory. Completed message
-  bodies are cleared. Retention is bounded, but SQLite pages and OS backups can retain
+  database mode is 0600; WAL files are protected by the directory. Completed inbox/outbox message
+  bodies are cleared. The last bounded question/reply for each mapped Slack thread is
+  retained locally for follow-ups until the mapping changes or Pigeon is uninstalled.
+  It is timestamped and never treated as fresh evidence. A bounded delivery-race buffer
+  keeps at most 100 agent replies; old completed-turn records are pruned after 24 hours. Retention is bounded, but SQLite pages and OS backups can retain
   deleted bytes; this is not forensic secure erasure. Slack keeps its own copies.
 
 Only bind projects whose output you intend to transmit to Slack. Raw agent messages
