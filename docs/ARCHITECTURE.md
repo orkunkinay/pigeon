@@ -72,7 +72,7 @@ A native resolution invalidates Pigeon’s copy. Only a single, non-secret struc
 question can be answered in Slack; private fields and multi-question forms stay local.
 
 Agent output is subscribed to after the user selects the session. On reconnect,
-Pigeon catches up the latest turn’s agent messages using stable item IDs. A completion
+Pigeon catches up the latest agent message in the latest turn using a stable item ID. A completion
 watch stores the exact turn ID. It does not interpret a broad task objective or promise
 to recognize an arbitrary benchmark’s semantic completion.
 

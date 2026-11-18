@@ -345,12 +345,14 @@ export class SlackBridge {
                   method: 'turn/completed',
                   params: { threadId: session, turn: latest },
                 });
-              for (const item of snapshot.turns?.at(-1)?.items || [])
-                if (item.type === 'agentMessage' && item.text)
-                  await this.notification({
-                    method: 'item/completed',
-                    params: { threadId: session, item },
-                  });
+              const lastMessage = (snapshot.turns?.at(-1)?.items || []).findLast(
+                (item: any) => item.type === 'agentMessage' && item.text,
+              );
+              if (lastMessage)
+                await this.notification({
+                  method: 'item/completed',
+                  params: { threadId: session, item: lastMessage },
+                });
             } catch {}
           }
         }
