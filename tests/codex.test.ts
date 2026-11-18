@@ -17,6 +17,8 @@ function fixture(active = true) {
             turns: active ? [{ id: 'turn-1', status: 'inProgress' }] : [],
           },
         };
+      if (method === 'thread/turns/list')
+        return { data: active ? [{ id: 'turn-1', status: 'inProgress', items: [] }] : [] };
       if (method === 'turn/steer') return { turnId: 'turn-1' };
       return {};
     },

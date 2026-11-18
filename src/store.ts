@@ -12,8 +12,13 @@ export class Store {
    CREATE TABLE IF NOT EXISTS inbox(id TEXT PRIMARY KEY, channel TEXT, root TEXT, text TEXT, status TEXT, created INTEGER);
    CREATE TABLE IF NOT EXISTS outbox(id TEXT PRIMARY KEY, channel TEXT, root TEXT, text TEXT, blocks TEXT, sent INTEGER DEFAULT 0, created INTEGER);
    CREATE TABLE IF NOT EXISTS approvals(token TEXT PRIMARY KEY, generation TEXT, rpc_id TEXT, session TEXT, channel TEXT, root TEXT, method TEXT, params TEXT, status TEXT, expires INTEGER);
-   CREATE TABLE IF NOT EXISTS watches(session TEXT PRIMARY KEY, channel TEXT, root TEXT);
+   CREATE TABLE IF NOT EXISTS watches(session TEXT PRIMARY KEY, channel TEXT, root TEXT, turn TEXT);
   `);
+    if (
+      !(this.db.prepare('PRAGMA table_info(watches)').all() as any[]).some((c) => c.name === 'turn')
+    ) {
+      this.db.exec('ALTER TABLE watches ADD COLUMN turn TEXT; DELETE FROM watches;');
+    }
     // Never replay a potentially delivered instruction after a crash.
     const interrupted = this.db
       .prepare("SELECT id,channel,root FROM inbox WHERE status='sending'")

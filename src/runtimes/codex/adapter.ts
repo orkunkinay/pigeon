@@ -26,7 +26,7 @@ export class CodexAdapter {
           threadId: id,
           includeTurns: false,
         });
-        if (typeof t.source === 'object') continue; // exclude internal subagents
+        if (typeof t.source === 'object' || t.status.type === 'notLoaded') continue; // exclude internal subagents
         sessions.push({
           id: t.id,
           name: t.name || basename(t.cwd),
@@ -53,11 +53,19 @@ export class CodexAdapter {
   async attach(id: string) {
     await this.assertLoaded(id);
     // No overrides: joining a live thread must preserve its permissions and instructions.
-    return this.rpc.call('thread/resume', { threadId: id });
+    return this.rpc.call('thread/resume', { threadId: id, excludeTurns: true });
   }
   async snapshot(id: string) {
     await this.assertLoaded(id);
-    return (await this.rpc.call('thread/read', { threadId: id, includeTurns: true })).thread;
+    const { thread } = await this.rpc.call('thread/read', { threadId: id, includeTurns: false });
+    const page = await this.rpc.call('thread/turns/list', {
+      threadId: id,
+      limit: 1,
+      sortDirection: 'desc',
+      itemsView: 'full',
+    });
+    thread.turns = page.data.slice().reverse();
+    return thread;
   }
   async deliver(id: string, text: string, messageId: string) {
     await this.attach(id);

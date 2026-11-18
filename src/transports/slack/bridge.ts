@@ -145,7 +145,7 @@ export class SlackBridge {
       const watch = this.store.db
         .prepare('SELECT * FROM watches WHERE session=?')
         .get(p.threadId) as any;
-      if (watch) {
+      if (watch && watch.turn === p.turn.id) {
         this.store.post(
           `completed:${p.threadId}:${p.turn.id}`,
           watch.channel,
@@ -265,8 +265,13 @@ export class SlackBridge {
       }
       await this.adapter.attach(session.id);
       this.store.db
-        .prepare('INSERT OR REPLACE INTO watches VALUES(?,?,?)')
-        .run(session.id, channel, root);
+        .prepare('INSERT OR REPLACE INTO watches VALUES(?,?,?,?)')
+        .run(
+          session.id,
+          channel,
+          root,
+          snapshot.turns?.findLast((t: any) => t.status === 'inProgress')?.id || 'unavailable',
+        );
       this.store.post(
         `watch:${id}`,
         channel,
@@ -318,6 +323,12 @@ export class SlackBridge {
               await this.adapter.attach(session);
               this.subscribed.add(session);
               const snapshot = await this.adapter.snapshot(session);
+              const latest = snapshot.turns?.at(-1);
+              if (latest && latest.status !== 'inProgress')
+                await this.notification({
+                  method: 'turn/completed',
+                  params: { threadId: session, turn: latest },
+                });
               for (const item of snapshot.turns?.at(-1)?.items || [])
                 if (item.type === 'agentMessage' && item.text)
                   await this.notification({
@@ -345,7 +356,6 @@ export class SlackBridge {
         }
       }
       this.approvals.expire();
-      this.store.expireQueued();
       if (Date.now() >= this.nextPruneAt) {
         this.store.prune();
         this.nextPruneAt = Date.now() + 3600000;

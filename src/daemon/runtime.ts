@@ -11,11 +11,6 @@ export async function stageRuntime(cli: string): Promise<string> {
   const runtimeRoot = join(home, 'runtimes');
   if (root.startsWith(runtimeRoot + sep)) return resolve(cli);
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
-  const files = [
-    join(root, 'package-lock.json'),
-    join(root, 'dist/cli.js'),
-    join(root, 'dist/transports/slack/bridge.js'),
-  ];
   const hash = createHash('sha256');
   // Include the entire build, not just version, so local fixes receive a distinct immutable install.
   const { readdir } = await import('node:fs/promises');
@@ -29,7 +24,7 @@ export async function stageRuntime(cli: string): Promise<string> {
     }
   }
   await digest(join(root, 'dist'));
-  for (const p of files.slice(0, 1)) hash.update(await readFile(p));
+  hash.update(await readFile(join(root, 'package-lock.json')));
   const destination = join(runtimeRoot, `${manifest.version}-${hash.digest('hex').slice(0, 12)}`);
   try {
     await stat(join(destination, 'ready'));
