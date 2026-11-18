@@ -58,13 +58,19 @@ export class CodexAdapter {
   async snapshot(id: string) {
     await this.assertLoaded(id);
     const { thread } = await this.rpc.call('thread/read', { threadId: id, includeTurns: false });
-    const page = await this.rpc.call('thread/turns/list', {
-      threadId: id,
-      limit: 1,
-      sortDirection: 'desc',
-      itemsView: 'full',
-    });
-    thread.turns = page.data.slice().reverse();
+    try {
+      const page = await this.rpc.call('thread/turns/list', {
+        threadId: id,
+        limit: 1,
+        sortDirection: 'desc',
+        itemsView: 'full',
+      });
+      thread.turns = page.data.slice().reverse();
+    } catch (e: any) {
+      if (e.code !== -32601) throw e;
+      // Legacy history mode exposes turns through read, not the paginated endpoint.
+      return (await this.rpc.call('thread/read', { threadId: id, includeTurns: true })).thread;
+    }
     return thread;
   }
   async deliver(id: string, text: string, messageId: string) {
