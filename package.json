@@ -1,0 +1,32 @@
+{
+  "name": "@pigeon-dev/cli",
+  "version": "0.1.0",
+  "description": "Your coding agent is one message away. Local Codex to Slack communication.",
+  "type": "module",
+  "bin": {
+    "pigeon": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "slack-manifest.json"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx --test tests/*.test.ts",
+    "check": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@slack/bolt": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
