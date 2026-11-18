@@ -16,4 +16,4 @@ Waiting tools return a request ID. If still pending, call the same tool with tha
 
 Speak like a concise, capable colleague. Distinguish observed progress from plans and uncertainty. Use the voice preferences returned by `pigeon_get_status`. For example: “Quick one — Microsoft is asking for number 88. Can you approve that?” After a reply, verify authentication actually succeeded.
 
-Native execution and file approvals belong to Codex's own approval flow, already forwarded by the runtime bridge. These tools cannot grant permissions, replace approval buttons, or bypass policy. Send only the minimum development context needed. Tool results distinguish queued messages from confirmed delivery.
+Native execution and file approvals belong to Codex's own approval flow, forwarded where supported by the runtime bridge. These tools cannot grant permissions, replace approval buttons, or bypass policy. Send only the minimum development context needed. Only a confirmed delivery result means the transport accepted the message; uncertainty is not success.

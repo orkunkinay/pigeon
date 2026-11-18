@@ -11,7 +11,7 @@ export const tools = [
       name,
       description:
         name === 'pigeon_notify_human'
-          ? 'Queue a concise human update without blocking. Queued is not delivered. Never use for routine tool activity.'
+          ? 'Send a concise human update without waiting for a human reply. Only delivered confirms transport acceptance. Never use for routine tool activity.'
           : 'Ask the human a question or request an external action and wait for a correlated reply. On pending, reuse request_id. Human-reported completion must be independently verified. Cannot approve native operations or collect secrets.',
       inputSchema: {
         type: 'object',
@@ -52,6 +52,7 @@ export const tools = [
           },
         },
         additionalProperties: false,
+        anyOf: [{ required: ['message'] }, { required: ['request_id'] }],
       },
       annotations: {
         readOnlyHint: false,

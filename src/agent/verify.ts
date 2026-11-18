@@ -2,9 +2,18 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { CodexRpc } from '../runtimes/codex/rpc.js';
 import { tools } from './contracts.js';
-import { home } from '../config.js';
+import { home, readConfig } from '../config.js';
+import { registration } from './install.js';
 
 export async function verifyAgentIntegration(cli: string) {
+  const configured = await registration(readConfig().codexBin);
+  const registrationEnabled =
+    !!configured?.enabled &&
+    tools.every(
+      (t) =>
+        (!configured.enabled_tools || configured.enabled_tools.includes(t.name)) &&
+        !configured.disabled_tools?.includes(t.name),
+    );
   const rpc = new CodexRpc();
   let skillDiscovered = false;
   let discoveryError: string | undefined;
@@ -41,5 +50,10 @@ export async function verifyAgentIntegration(cli: string) {
   } finally {
     await client.close();
   }
-  return { skillDiscovered, mcpToolsVerified, ...(discoveryError ? { discoveryError } : {}) };
+  return {
+    skillDiscovered,
+    mcpToolsVerified,
+    registrationEnabled,
+    ...(discoveryError ? { discoveryError } : {}),
+  };
 }

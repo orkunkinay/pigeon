@@ -78,7 +78,7 @@ export class HumanCommunication {
         `human-closed:${row.id}`,
         channel,
         root,
-        'That request is no longer waiting. No response was sent to the agent.',
+        this.voice().say('humanRequestClosed'),
       );
       return true;
     }
@@ -88,7 +88,7 @@ export class HumanCommunication {
         "UPDATE human_requests SET status='answered',response=? WHERE id=? AND status='pending'",
       )
       .run(text.slice(0, 3000), row.id);
-    this.store.post(`human-reply:${row.id}`, channel, root, this.voice().say('answerSent'));
+    this.store.post(`human-reply:${row.id}`, channel, root, this.voice().say('humanReplySaved'));
     return true;
   }
   async call(call: AgentCall, signal: AbortSignal) {
@@ -139,6 +139,7 @@ export class HumanCommunication {
     )
       throw Error('Invalid wait or expiration');
     let row: RequestRow | undefined;
+    const until = Date.now() + Number(wait) * 1000;
     if (a.request_id !== undefined) {
       if (typeof a.request_id !== 'string') throw Error('Invalid request_id');
       row = this.row(a.request_id);
@@ -161,6 +162,7 @@ export class HumanCommunication {
       const key = String(a.request_key || call.callKey || randomUUID());
       // Serialize root creation, not waiting. A lost Slack acknowledgment is never automatically retried.
       const create = this.creating.then(async () => {
+        if (signal.aborted) throw Error('Communication cancelled before sending');
         const existing = this.store.db
           .prepare('SELECT * FROM human_requests WHERE session=? AND request_key=?')
           .get(call.session!, key) as RequestRow | undefined;
@@ -201,7 +203,6 @@ export class HumanCommunication {
       );
       row = await create;
     }
-    const until = Date.now() + Number(wait) * 1000;
     while (!notify && row.status === 'pending' && Date.now() < until && !signal.aborted) {
       await new Promise((r) => setTimeout(r, 200));
       this.prune();

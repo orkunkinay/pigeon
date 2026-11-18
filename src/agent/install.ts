@@ -81,6 +81,7 @@ export async function installAgentIntegration(
   paths = defaults(),
 ) {
   const receiptPath = join(paths.pigeonHome, 'agent-integration.json');
+  await mkdir(paths.codexHome, { recursive: true });
   const receiptText = await contents(receiptPath);
   const previous: Receipt | undefined = receiptText ? JSON.parse(receiptText) : undefined;
   const skillPath = join(paths.userHome, '.agents/skills/pigeon/SKILL.md');
@@ -227,7 +228,7 @@ export async function removeAgentIntegration(codex: string, paths = defaults()) 
       env: { ...process.env, CODEX_HOME: paths.codexHome },
     });
   else if (current) preserved.push('pigeon MCP configuration');
-  if (receipt.launcher) {
+  if (receipt.launcher && !preserved.some((p) => p.includes('MCP configuration'))) {
     await regular(receipt.launcher.path);
     if ((await contents(receipt.launcher.path)) === receipt.launcher.content)
       await rm(receipt.launcher.path, { force: true });

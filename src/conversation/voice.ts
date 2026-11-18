@@ -67,6 +67,8 @@ const en = {
   delivered: 'Passed that to Codex on {project}.',
   questionDelivered: 'I’ve passed your question to Codex on {project}. Waiting for its reply.',
   answerSent: 'Your answer is with Codex.',
+  humanReplySaved: 'Got it — saved your reply for Codex.',
+  humanRequestClosed: 'That request is no longer waiting. No response was sent to the agent.',
   ambiguous:
     'What should I pass along? Use the buttons for a pending approval, or send a specific instruction.',
   interrupt: 'Asked Codex to stop the current turn on {project}.',
@@ -131,6 +133,8 @@ const es: Record<Phrase, string> = {
   delivered: 'Se lo he pasado a Codex en {project}.',
   questionDelivered: 'He enviado tu pregunta a Codex en {project}. Espero su respuesta.',
   answerSent: 'Codex ya tiene tu respuesta.',
+  humanReplySaved: 'Listo — guardé tu respuesta para Codex.',
+  humanRequestClosed: 'Esa solicitud ya no espera una respuesta. No se envió nada al agente.',
   ambiguous:
     '¿Qué quieres que le pase? Usa los botones para una aprobación pendiente o escribe una instrucción concreta.',
   interrupt: 'He pedido a Codex que detenga el turno actual en {project}.',
@@ -197,6 +201,8 @@ const tr: Record<Phrase, string> = {
   delivered: 'Mesajını {project} projesindeki Codex’e ilettim.',
   questionDelivered: 'Sorunu {project} projesindeki Codex’e ilettim. Yanıtını bekliyorum.',
   answerSent: 'Yanıtın Codex’e iletildi.',
+  humanReplySaved: 'Tamam — yanıtını Codex için kaydettim.',
+  humanRequestClosed: 'Bu istek artık yanıt beklemiyor. Aracıya yanıt gönderilmedi.',
   ambiguous:
     'Neyi iletmemi istersin? Bekleyen onay için düğmeleri kullanabilir veya açık bir talimat yazabilirsin.',
   interrupt: 'Codex’ten {project} projesindeki mevcut turu durdurmasını istedim.',

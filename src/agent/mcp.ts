@@ -27,6 +27,17 @@ export async function runMcp() {
         structuredContent: result,
       };
     } catch (e) {
+      if (request.params.name === 'pigeon_get_status') {
+        const result = {
+          available: false,
+          companion: false,
+          reason: 'The local companion is unavailable. Run pigeon doctor.',
+        };
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+          structuredContent: result,
+        };
+      }
       return {
         isError: true,
         content: [{ type: 'text', text: e instanceof Error ? e.message : 'Pigeon unavailable' }],

@@ -1,4 +1,5 @@
 import bolt from '@slack/bolt';
+import { WebClient } from '@slack/web-api';
 import { randomUUID } from 'node:crypto';
 import type { Config } from '../../config.js';
 import { home, readConfig } from '../../config.js';
@@ -50,6 +51,12 @@ export class SlackBridge {
     private ensureRuntime?: () => Promise<void>,
   ) {
     this.voice = new Voice(config.personality);
+    const humanClient = new WebClient(botToken, {
+      logger: slackLogger,
+      timeout: 10000,
+      retryConfig: { retries: 0 },
+      rejectRateLimitedCalls: true,
+    });
     this.human = new HumanCommunication(
       store,
       () => this.voice,
@@ -77,7 +84,7 @@ export class SlackBridge {
       },
       () => config.dmChannel,
       async (channel, text, id) => {
-        const posted = await this.app.client.chat.postMessage({
+        const posted = await humanClient.chat.postMessage({
           channel,
           text,
           unfurl_links: false,
