@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sessions and recovery · Pigeon docs</title><meta name="description" content="Live, idle, and saved sessions, what reconnection restores, and what resuming does not.">
+<link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/styles/site.css"></head>
+<body><a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap"><a class="brand" href="../index.html"><img src="../assets/images/pigeon-mark.svg" alt="">Pigeon</a>
+<nav aria-label="Primary"><a href="../index.html#demo" class="hide-s">Demo</a><a href="index.html" aria-current="page">Docs</a><a href="https://github.com/Murat-Barkin-Kinay/pigeon" class="hide-s">GitHub</a><button class="themebtn" data-theme-toggle type="button" aria-label="Toggle dark mode">◐</button></nav></div></header>
+<div class="wrap docs"><aside class="side" id="side" aria-label="Documentation"><label for="q" class="note">Search docs (press /)</label><input id="q" type="search" autocomplete="off" placeholder="e.g. socket mode"><ul id="results"></ul><h5>Start</h5><a href="index.html">Overview</a><a href="getting-started.html">Getting started</a><h5>Set up</h5><a href="slack-setup.html">Slack setup</a><a href="codex-integration.html">Codex integration</a><h5>Use</h5><a href="using-pigeon.html">Using Pigeon</a><a href="routing.html">How messages are routed</a><a href="sessions.html" aria-current="page">Sessions and recovery</a><h5>Reference</h5><a href="troubleshooting.html">Troubleshooting</a><a href="status.html">Supported, experimental, unsupported</a><a href="architecture.html">Architecture</a><a href="security.html">Security</a><a href="contributing.html">Contributing</a><h5>On this page</h5><div class="toc"><a href="#four-states-one-rule">Four states, one rule</a><a href="#what-pigeon-does-restore">What Pigeon does restore</a><a href="#if-your-session-has-stopped">If your session has stopped</a><a href="#sleep-and-network-loss">Sleep and network loss</a></div></aside>
+<main id="main" class="article"><button class="btn sbtn" type="button" aria-expanded="false" aria-controls="side">☰ Docs menu</button>
+<p class="eyebrow">Use</p><h1>Sessions and recovery</h1><div class="callout bad"><p><strong>No Session Recovery Manager.</strong> Pigeon cannot resume a stopped conversation for you. It can only reconnect to sessions that are still loaded in the running Codex daemon. <span class="pill no">Not built</span></p></div>
+<h2 id="four-states-one-rule">Four states, one rule<a class="anchor" href="#four-states-one-rule" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>State</th><th>Can Pigeon talk to it?</th></tr></thead><tbody>
+<tr><td><strong>Active</strong>: loaded in the daemon, a turn running</td><td>Yes. Status, steering, interruption, approvals.</td></tr>
+<tr><td><strong>Idle</strong>: loaded in the daemon, waiting</td><td>Yes. Instructions start the next turn in the same session.</td></tr>
+<tr><td><strong>Saved</strong>: history on disk, not loaded</td><td>No. It is not listed and cannot be selected.</td></tr>
+<tr><td><strong>Interrupted</strong>: a turn you paused</td><td>The session is still live and idle. The turn is not restored.</td></tr>
+</tbody></table></div>
+<p>The rule: <strong>a saved conversation is not a live connection.</strong> Resuming history may restore the conversation but not a terminated process at the exact instruction where it stopped.</p>
+<h2 id="what-pigeon-does-restore">What Pigeon does restore<a class="anchor" href="#what-pigeon-does-restore" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>Pigeon restarts</strong> (<span class="pill ok">Verified</span>): thread-to-session bindings return and Pigeon rejoins the same live session, with no second worker.</li>
+<li><strong>Slack reconnects:</strong> Socket Mode reconnects automatically; Pigeon catches up the latest agent message of the latest turn. Unsent notifications wait in a durable outbox.</li>
+<li><strong>Crash during delivery:</strong> marked uncertain, warned in the thread, never replayed.</li>
+<li><strong>Codex daemon restarts</strong> (<span class="pill exp">Experimental</span>): Pigeon retries discovery and reconnects only to loaded identities; old approval buttons are invalidated.</li>
+</ul>
+<h2 id="if-your-session-has-stopped">If your session has stopped<a class="anchor" href="#if-your-session-has-stopped" aria-label="Link to this section">#</a></h2>
+<ol>
+<li>Reopen it in Codex (for example resume the conversation from the Codex CLI or app) so it is loaded again in the shared daemon.</li>
+<li>DM <code>sessions</code> to Pigeon and press <b>Connect</b> on it.</li>
+<li>Send your instruction in the thread.</li>
+</ol>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">What you will see when the old session is gone</span><pre><code>You     Continue AgentLane.
+Pigeon  That session has gone offline. I haven’t sent your message.
+        Send “sessions” to reconnect explicitly.</code></pre></div>
+<h2 id="sleep-and-network-loss">Sleep and network loss<a class="anchor" href="#sleep-and-network-loss" aria-label="Link to this section">#</a></h2>
+<p>SDK reconnection and the durable outbox are implemented, but physical sleep and network-drop tests have not been run. Slack is not a guaranteed offline inbox. <span class="pill exp">Experimental</span></p>
+
+<nav class="pn" aria-label="Previous and next"><a href="routing.html"><small>← Previous</small>How messages are routed</a><a class="next" href="troubleshooting.html"><small>Next →</small>Troubleshooting</a></nav></main></div>
+<footer><div class="wrap"><span>Pigeon is MIT licensed. Preview software, macOS only.</span><a href="https://github.com/Murat-Barkin-Kinay/pigeon">Source on GitHub</a></div></footer>
+<script src="../assets/scripts/search-index.js"></script><script src="../assets/scripts/site.js"></script></body></html>

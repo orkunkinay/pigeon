@@ -1,0 +1,43 @@
+desc: What to say to Pigeon, and exactly what happens to each kind of message.
+---
+<p class="lede">Talk to it like a colleague. A small set of phrases is answered from what Codex has already done. Everything else is passed to your original session.</p>
+<h2>Ask what it is doing</h2>
+<p>Recognised phrases include <em>what are you doing</em>, <em>how's it going</em>, <em>status</em>, <em>are you stuck</em>, <em>how are the tests going</em>, and <em>what's failing</em> (also in Spanish and Turkish). Pigeon reads the latest turn and replies. No model turn is created and nothing is interrupted.</p>
+<div class="callout"><p>Counts and failing test names appear only when they exist in observed test output. Otherwise Pigeon passes your question to Codex rather than invent an answer.</p></div>
+<h2>Give an instruction</h2>
+<p>Anything not recognised as a special phrase is an instruction, for example <em>Focus on latency first.</em> If a turn is active, Pigeon steers it with <code>turn/steer</code>, guarded by that turn's ID. If the session is idle, it starts the next turn in the same session. Pigeon confirms (“Passed that to Codex on …”) only after Codex accepts the input.</p>
+<div class="callout warn"><p>This includes free-form questions such as “why did you pick that library?”. They are delivered to the working session as input; there is no separate side conversation. See <a href="routing.html">routing</a>.</p></div>
+<h2>Pause</h2>
+<p><em>Pause</em>, <em>stop</em> or <em>interrupt</em> asks Codex to interrupt the exact active turn. It is not a checkpoint: a terminated command is not restored. If Codex is disconnected, the stop is rejected, never queued for later.</p>
+<h2>Continue</h2>
+<p><em>Continue</em> is simply a new instruction in the same session.</p>
+<h2>Ask to be told when it finishes</h2>
+<p><em>Let me know when it's finished</em> watches the exact current turn. If Codex is already idle, Pigeon says so and suggests asking for the latest result.</p>
+<h2>Approve a request</h2>
+<p>When Codex asks to run a command, Pigeon posts the project directory, the complete command and the reason, with <b>Approve once</b> and <b>Deny</b> buttons. Typing “yes” does nothing: only the button counts. Controls expire after 10 minutes, and are invalidated by reconnects or by a local decision. Codex still applies its own policy.</p>
+<p>File-change approvals, broad permission bundles, truncated commands, and unknown request types stay in Codex, and Pigeon tells you to look there.</p>
+<h2>Answer a question from the agent</h2>
+<p>When Codex asks one non-secret question (Plan mode), reply in the thread to resolve that exact request. Secret fields and multi-question forms stay local. When the agent calls <code>pigeon_ask_human</code> or <code>pigeon_request_human_action</code>, your reply goes back to the waiting call.</p>
+{{sh:Example: an Authenticator prompt}}
+Pigeon  Quick one — Microsoft is asking for number 88. Can you approve that?
+You     Done.
+Pigeon  Passed that back to Codex on agentlane.
+{{/sh}}
+<p>Approve in Microsoft's own app. Pigeon never touches Authenticator, and the agent is told to verify that sign-in really succeeded.</p>
+<h2>What gets a notification</h2>
+<div class="tablewrap"><table><thead><tr><th><code>proactiveness</code></th><th>You get</th></tr></thead><tbody>
+<tr><td><code>quiet</code></td><td>Human requests, failures and interruptions, and anything you explicitly asked for.</td></tr>
+<tr><td><code>important</code> (default)</td><td>The above plus completed turns.</td></tr>
+<tr><td><code>updates</code></td><td>Also progress, at most once a minute per session.</td></tr>
+</tbody></table></div>
+<h2>Change the voice</h2>
+{{sh:terminal}}
+$ node dist/cli.js voice
+$ node dist/cli.js voice set humour off
+$ node dist/cli.js voice set proactiveness quiet
+$ node dist/cli.js voice set language tr      # en, es or tr
+$ node dist/cli.js voice reset
+{{/sh}}
+<p>Options: <code>formality</code> (casual, neutral, formal), <code>humour</code> (dry, off), <code>verbosity</code> (brief, normal, detailed), <code>proactiveness</code>, <code>language</code>, <code>address</code>. The running service picks changes up within five seconds.</p>
+<h2>Several projects</h2>
+<p>Each Slack thread is bound to one exact Codex session. Send <code>sessions</code>, choose, and keep talking in that thread. A stale binding fails closed: Pigeon tells you the session went offline and sends nothing. It never falls through to another project.</p>

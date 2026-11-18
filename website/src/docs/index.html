@@ -1,0 +1,22 @@
+desc: What Pigeon is, how the docs are organised, and what is verified.
+---
+<p class="lede">Pigeon connects the Codex sessions already running on your Mac to a private Slack conversation. Ask what the agent is doing, steer it, approve a command, or answer its question without going back to your desk.</p>
+<div class="callout warn"><p><strong>Preview, macOS only.</strong> Tested against Codex CLI 0.169.0 and its shared daemon 0.169.1. The package is not yet published to npm and the repository is being prepared for publication, so installation is from a source checkout. See <a href="status.html">what is verified, experimental, and unsupported</a>.</p></div>
+<h2>Start here</h2>
+<div class="grid2">
+<div class="box"><h3><a href="getting-started.html">Getting started</a></h3><p>Requirements, install, first message. About ten minutes.</p></div>
+<div class="box"><h3><a href="slack-setup.html">Slack setup</a></h3><p>Create the Slack app from a manifest, with an annotated diagram for every click.</p></div>
+<div class="box"><h3><a href="using-pigeon.html">Using Pigeon</a></h3><p>What to type, and what Pigeon does with it.</p></div>
+<div class="box"><h3><a href="troubleshooting.html">Troubleshooting</a></h3><p>Symptom, cause, command to run.</p></div>
+</div>
+<h2>How the pieces fit</h2>
+<p>Pigeon is a small local service. It speaks Slack over an outbound Socket Mode connection and talks to Codex through the shared local daemon that Codex itself already runs. There is no cloud component and no second model.</p>
+<div class="code"><pre><code>You → Slack DM → Pigeon (on your Mac) → existing Codex daemon → your original session
+                                   ← observed activity, requests, results ←</code></pre></div>
+<p>Two things are worth knowing up front, because the rest of the docs build on them:</p>
+<ul>
+<li><strong>Messages are routed by simple, deterministic rules.</strong> A fixed set of phrases is answered locally from observed state. Everything else goes to Codex as an instruction. <a href="routing.html">Read the exact rules.</a></li>
+<li><strong>Pigeon talks to live sessions only.</strong> A saved conversation is not a live connection. <a href="sessions.html">Sessions and recovery</a> explains what that means.</li>
+</ul>
+<h2>About the screenshots</h2>
+<p>Slack's developer pages need a signed-in browser. These docs label every visual honestly: <span class="pill ok">Real rendering</span> means it was rendered from Pigeon's actual markup or output, and <span class="pill exp">Illustrative diagram</span> means it is a drawing of a Slack page with numbered callouts, not a captured screenshot. Slack's labels change over time; if a button is worded differently, follow the highlighted position and the text in the step.</p>

@@ -1,0 +1,44 @@
+desc: A plain account of what Pigeon verifiably does, what is experimental, and what does not exist.
+---
+<p class="lede">Evidence collected on 2026-11-18: macOS 15.5 arm64, Node 24.18.0, Codex CLI 0.169.0, shared daemon 0.169.1. This page follows <code>docs/COMPATIBILITY.md</code> and <code>docs/TESTING.md</code> in the repository.</p>
+<h2>Verified</h2>
+<ul>
+<li>Discover a normally opened CLI session, then attach to the same live worker (same thread and turn IDs).</li>
+<li>Slack → original session → Slack, with a real human Slack message.</li>
+<li>Steer an active turn; interrupt the exact active turn.</li>
+<li>Status replies that add no turn and no user item.</li>
+<li>Human command approval (one-time) and a single-question structured input.</li>
+<li>Proactive agent messages after you select a session.</li>
+<li>Pigeon restart rejoining the same live session; LaunchAgent bootstrap and restart.</li>
+<li>Clean package install into an empty prefix.</li>
+</ul>
+<h2>Implemented with restrictions</h2>
+<ul>
+<li>Status recognition is a fixed phrase list, not natural-language understanding.</li>
+<li>Completion means the end of a Codex turn, not an arbitrary milestone.</li>
+<li>Approvals: a single displayable command with no additional permission bundle.</li>
+<li>Reconnect catch-up covers the latest turn only.</li>
+<li>Multiple sessions work with separate threads. No stress-scale result.</li>
+<li>The agent-side MCP tools and skill: implemented, with local tests and a verifier. Treat as new.</li>
+</ul>
+<h2>Experimental</h2>
+<ul><li>The Codex daemon protocol itself and cross-version behaviour.</li><li>Recovery after a Codex daemon restart.</li><li>Mac sleep and network loss.</li><li>The dedicated Codex desktop app and IDE extensions beyond the observed case.</li></ul>
+<h2>Not built</h2>
+<ul>
+<li>A conversational fork for answering questions beside the main session.</li>
+<li>A session recovery manager that resumes saved conversations.</li>
+<li>Remote attachment to private stdio or embedded runtimes; terminal injection.</li>
+<li>File-change and broad permission approvals from Slack; multi-question forms.</li>
+<li>Slack file uploads and screenshots.</li>
+<li>Windows and Linux installation.</li>
+<li>npm publication (<code>@pigeon-dev/cli</code> is a proposed, unpublished name).</li>
+</ul>
+<h2>Cost</h2>
+<p>Pigeon runs on your Mac with SQLite and Slack Socket Mode. There is no cloud worker, tunnel, hosted database, or separate model API. Codex's own usage remains yours. Slack Free allows ten apps and shows the latest 90 days of history.</p>
+<h2>Measured on one development machine</h2>
+<div class="tablewrap"><table><thead><tr><th>Metric</th><th>Observation</th></tr></thead><tbody>
+<tr><td>Live session discovery</td><td>3.2–6.5 ms (10 samples)</td></tr>
+<tr><td>Slack instruction → delivery acknowledgment</td><td>about 1.39 s (one conversation)</td></tr>
+<tr><td>Idle service</td><td>about 121 MiB RSS, 0.3% CPU (one sample)</td></tr>
+</tbody></table></div>
+<p class="note">These are single observations, not performance guarantees. Raw data is in <code>docs/*-proof.json</code>.</p>

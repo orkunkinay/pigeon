@@ -1,0 +1,46 @@
+desc: Requirements, installing Pigeon from source, and sending your first message.
+---
+<h2>What you need</h2>
+<div class="tablewrap"><table><thead><tr><th>Requirement</th><th>Why</th></tr></thead><tbody>
+<tr><td>macOS</td><td>Credentials go in the login Keychain and Pigeon runs as a LaunchAgent. Windows and Linux are not supported.</td></tr>
+<tr><td>Node.js 24 or newer, and npm</td><td><code>package.json</code> sets <code>engines.node &gt;=24</code>.</td></tr>
+<tr><td>Codex, signed in, with a reachable shared daemon</td><td>Pigeon joins the daemon. <code>codex app-server daemon version</code> should report it.</td></tr>
+<tr><td>Permission to install a custom Slack app</td><td>Needed once, in the workspace you want to message from.</td></tr>
+</tbody></table></div>
+<h2>Install from source</h2>
+<p>The npm name <code>pigeon</code> belongs to a different project. Do not run <code>npx pigeon</code>. The planned scoped name <code>@pigeon-dev/cli</code> is unpublished.</p>
+{{sh:terminal}}
+$ git clone https://github.com/Murat-Barkin-Kinay/pigeon.git   # once the repository is public
+$ cd pigeon
+$ npm ci
+$ npm run build
+$ node dist/cli.js setup
+{{/sh}}
+<p>If you already have a checkout, skip the clone. To get a <code>pigeon</code> command on your PATH instead of <code>node dist/cli.js</code>, run <code>npm pack</code> and then <code>npm install -g ./pigeon-dev-cli-0.1.0.tgz</code>.</p>
+<h2>What <code>setup</code> does</h2>
+<ol>
+<li>Starts a local page on <code>127.0.0.1</code> (random port and path, expires after 20 minutes) and opens it. It shows the Slack app manifest and two token fields.</li>
+<li>You create the Slack app, install it, and paste two tokens. <a href="slack-setup.html">Slack setup</a> shows each click.</li>
+<li>Pigeon validates both tokens with Slack, stores them in Keychain, and prints a one-time line: <code>In a direct message to Pigeon, send: pair &lt;code&gt;</code>.</li>
+<li>You send that line to Pigeon in Slack. Pairing locks Pigeon to your user and workspace.</li>
+<li>Pigeon installs a LaunchAgent (<code>dev.pigeon.companion</code>), registers its MCP server with Codex and installs its skill. You can close the terminal.</li>
+</ol>
+{{img:pigeon-setup-form.png|The local Pigeon setup page: instructions, the manifest text, and two password fields for the bot token and app-level token.|The page <code>pigeon setup</code> opens, rendered from the shipped markup and manifest. The fields are empty.}}
+<h2>Your first conversation</h2>
+<ol>
+<li>Open Codex normally in a project and give it a task. Keep it running.</li>
+<li>In Slack, open your DM with Pigeon and send <code>sessions</code>.</li>
+<li>Pigeon lists live sessions with a <b>Connect</b> button each. Press the one you want.</li>
+<li>Reply in that thread: <code>What are you doing?</code></li>
+</ol>
+<div class="callout"><p>The message that triggered the selector is <strong>not</strong> sent after you choose. Send your message again in the thread. Separate threads keep separate projects.</p></div>
+<h2>Check the install</h2>
+{{sh:terminal}}
+$ node dist/cli.js doctor
+{{/sh}}
+<p><code>doctor</code> reports Slack pairing, Keychain items, the background service, the Codex runtime and live session count, skill discovery, MCP tool verification, and whether the Slack Socket Mode credential is still valid. If something is wrong, see <a href="troubleshooting.html">Troubleshooting</a>.</p>
+<h2>Uninstall</h2>
+{{sh:terminal}}
+$ node dist/cli.js uninstall
+{{/sh}}
+<p>Removes the LaunchAgent, local runtime and state, and the two Keychain items. It does not delete the Slack app (remove that in Slack) or touch Codex settings or history.</p>

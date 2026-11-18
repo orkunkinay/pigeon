@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Using Pigeon · Pigeon docs</title><meta name="description" content="What to say to Pigeon, and exactly what happens to each kind of message.">
+<link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/styles/site.css"></head>
+<body><a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap"><a class="brand" href="../index.html"><img src="../assets/images/pigeon-mark.svg" alt="">Pigeon</a>
+<nav aria-label="Primary"><a href="../index.html#demo" class="hide-s">Demo</a><a href="index.html" aria-current="page">Docs</a><a href="https://github.com/Murat-Barkin-Kinay/pigeon" class="hide-s">GitHub</a><button class="themebtn" data-theme-toggle type="button" aria-label="Toggle dark mode">◐</button></nav></div></header>
+<div class="wrap docs"><aside class="side" id="side" aria-label="Documentation"><label for="q" class="note">Search docs (press /)</label><input id="q" type="search" autocomplete="off" placeholder="e.g. socket mode"><ul id="results"></ul><h5>Start</h5><a href="index.html">Overview</a><a href="getting-started.html">Getting started</a><h5>Set up</h5><a href="slack-setup.html">Slack setup</a><a href="codex-integration.html">Codex integration</a><h5>Use</h5><a href="using-pigeon.html" aria-current="page">Using Pigeon</a><a href="routing.html">How messages are routed</a><a href="sessions.html">Sessions and recovery</a><h5>Reference</h5><a href="troubleshooting.html">Troubleshooting</a><a href="status.html">Supported, experimental, unsupported</a><a href="architecture.html">Architecture</a><a href="security.html">Security</a><a href="contributing.html">Contributing</a><h5>On this page</h5><div class="toc"><a href="#ask-what-it-is-doing">Ask what it is doing</a><a href="#give-an-instruction">Give an instruction</a><a href="#pause">Pause</a><a href="#continue">Continue</a><a href="#ask-to-be-told-when-it-finishes">Ask to be told when it finishes</a><a href="#approve-a-request">Approve a request</a><a href="#answer-a-question-from-the-agent">Answer a question from the agent</a><a href="#what-gets-a-notification">What gets a notification</a><a href="#change-the-voice">Change the voice</a><a href="#several-projects">Several projects</a></div></aside>
+<main id="main" class="article"><button class="btn sbtn" type="button" aria-expanded="false" aria-controls="side">☰ Docs menu</button>
+<p class="eyebrow">Use</p><h1>Using Pigeon</h1><p class="lede">Talk to it like a colleague. A small set of phrases is answered from what Codex has already done. Everything else is passed to your original session.</p>
+<h2 id="ask-what-it-is-doing">Ask what it is doing<a class="anchor" href="#ask-what-it-is-doing" aria-label="Link to this section">#</a></h2>
+<p>Recognised phrases include <em>what are you doing</em>, <em>how's it going</em>, <em>status</em>, <em>are you stuck</em>, <em>how are the tests going</em>, and <em>what's failing</em> (also in Spanish and Turkish). Pigeon reads the latest turn and replies. No model turn is created and nothing is interrupted.</p>
+<div class="callout"><p>Counts and failing test names appear only when they exist in observed test output. Otherwise Pigeon passes your question to Codex rather than invent an answer.</p></div>
+<h2 id="give-an-instruction">Give an instruction<a class="anchor" href="#give-an-instruction" aria-label="Link to this section">#</a></h2>
+<p>Anything not recognised as a special phrase is an instruction, for example <em>Focus on latency first.</em> If a turn is active, Pigeon steers it with <code>turn/steer</code>, guarded by that turn's ID. If the session is idle, it starts the next turn in the same session. Pigeon confirms (“Passed that to Codex on …”) only after Codex accepts the input.</p>
+<div class="callout warn"><p>This includes free-form questions such as “why did you pick that library?”. They are delivered to the working session as input; there is no separate side conversation. See <a href="routing.html">routing</a>.</p></div>
+<h2 id="pause">Pause<a class="anchor" href="#pause" aria-label="Link to this section">#</a></h2>
+<p><em>Pause</em>, <em>stop</em> or <em>interrupt</em> asks Codex to interrupt the exact active turn. It is not a checkpoint: a terminated command is not restored. If Codex is disconnected, the stop is rejected, never queued for later.</p>
+<h2 id="continue">Continue<a class="anchor" href="#continue" aria-label="Link to this section">#</a></h2>
+<p><em>Continue</em> is simply a new instruction in the same session.</p>
+<h2 id="ask-to-be-told-when-it-finishes">Ask to be told when it finishes<a class="anchor" href="#ask-to-be-told-when-it-finishes" aria-label="Link to this section">#</a></h2>
+<p><em>Let me know when it's finished</em> watches the exact current turn. If Codex is already idle, Pigeon says so and suggests asking for the latest result.</p>
+<h2 id="approve-a-request">Approve a request<a class="anchor" href="#approve-a-request" aria-label="Link to this section">#</a></h2>
+<p>When Codex asks to run a command, Pigeon posts the project directory, the complete command and the reason, with <b>Approve once</b> and <b>Deny</b> buttons. Typing “yes” does nothing: only the button counts. Controls expire after 10 minutes, and are invalidated by reconnects or by a local decision. Codex still applies its own policy.</p>
+<p>File-change approvals, broad permission bundles, truncated commands, and unknown request types stay in Codex, and Pigeon tells you to look there.</p>
+<h2 id="answer-a-question-from-the-agent">Answer a question from the agent<a class="anchor" href="#answer-a-question-from-the-agent" aria-label="Link to this section">#</a></h2>
+<p>When Codex asks one non-secret question (Plan mode), reply in the thread to resolve that exact request. Secret fields and multi-question forms stay local. When the agent calls <code>pigeon_ask_human</code> or <code>pigeon_request_human_action</code>, your reply goes back to the waiting call.</p>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">Example: an Authenticator prompt</span><pre><code>Pigeon  Quick one — Microsoft is asking for number 88. Can you approve that?
+You     Done.
+Pigeon  Passed that back to Codex on agentlane.</code></pre></div>
+<p>Approve in Microsoft's own app. Pigeon never touches Authenticator, and the agent is told to verify that sign-in really succeeded.</p>
+<h2 id="what-gets-a-notification">What gets a notification<a class="anchor" href="#what-gets-a-notification" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th><code>proactiveness</code></th><th>You get</th></tr></thead><tbody>
+<tr><td><code>quiet</code></td><td>Human requests, failures and interruptions, and anything you explicitly asked for.</td></tr>
+<tr><td><code>important</code> (default)</td><td>The above plus completed turns.</td></tr>
+<tr><td><code>updates</code></td><td>Also progress, at most once a minute per session.</td></tr>
+</tbody></table></div>
+<h2 id="change-the-voice">Change the voice<a class="anchor" href="#change-the-voice" aria-label="Link to this section">#</a></h2>
+<div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ node dist/cli.js voice
+$ node dist/cli.js voice set humour off
+$ node dist/cli.js voice set proactiveness quiet
+$ node dist/cli.js voice set language tr      # en, es or tr
+$ node dist/cli.js voice reset</code></pre></div>
+<p>Options: <code>formality</code> (casual, neutral, formal), <code>humour</code> (dry, off), <code>verbosity</code> (brief, normal, detailed), <code>proactiveness</code>, <code>language</code>, <code>address</code>. The running service picks changes up within five seconds.</p>
+<h2 id="several-projects">Several projects<a class="anchor" href="#several-projects" aria-label="Link to this section">#</a></h2>
+<p>Each Slack thread is bound to one exact Codex session. Send <code>sessions</code>, choose, and keep talking in that thread. A stale binding fails closed: Pigeon tells you the session went offline and sends nothing. It never falls through to another project.</p>
+
+<nav class="pn" aria-label="Previous and next"><a href="codex-integration.html"><small>← Previous</small>Codex integration</a><a class="next" href="routing.html"><small>Next →</small>How messages are routed</a></nav></main></div>
+<footer><div class="wrap"><span>Pigeon is MIT licensed. Preview software, macOS only.</span><a href="https://github.com/Murat-Barkin-Kinay/pigeon">Source on GitHub</a></div></footer>
+<script src="../assets/scripts/search-index.js"></script><script src="../assets/scripts/site.js"></script></body></html>

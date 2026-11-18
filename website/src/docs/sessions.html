@@ -1,0 +1,31 @@
+desc: Live, idle, and saved sessions, what reconnection restores, and what resuming does not.
+---
+<div class="callout bad"><p><strong>No Session Recovery Manager.</strong> Pigeon cannot resume a stopped conversation for you. It can only reconnect to sessions that are still loaded in the running Codex daemon. {{pill:no}}</p></div>
+<h2>Four states, one rule</h2>
+<div class="tablewrap"><table><thead><tr><th>State</th><th>Can Pigeon talk to it?</th></tr></thead><tbody>
+<tr><td><strong>Active</strong>: loaded in the daemon, a turn running</td><td>Yes. Status, steering, interruption, approvals.</td></tr>
+<tr><td><strong>Idle</strong>: loaded in the daemon, waiting</td><td>Yes. Instructions start the next turn in the same session.</td></tr>
+<tr><td><strong>Saved</strong>: history on disk, not loaded</td><td>No. It is not listed and cannot be selected.</td></tr>
+<tr><td><strong>Interrupted</strong>: a turn you paused</td><td>The session is still live and idle. The turn is not restored.</td></tr>
+</tbody></table></div>
+<p>The rule: <strong>a saved conversation is not a live connection.</strong> Resuming history may restore the conversation but not a terminated process at the exact instruction where it stopped.</p>
+<h2>What Pigeon does restore</h2>
+<ul>
+<li><strong>Pigeon restarts</strong> ({{pill:ok}}): thread-to-session bindings return and Pigeon rejoins the same live session, with no second worker.</li>
+<li><strong>Slack reconnects:</strong> Socket Mode reconnects automatically; Pigeon catches up the latest agent message of the latest turn. Unsent notifications wait in a durable outbox.</li>
+<li><strong>Crash during delivery:</strong> marked uncertain, warned in the thread, never replayed.</li>
+<li><strong>Codex daemon restarts</strong> ({{pill:exp}}): Pigeon retries discovery and reconnects only to loaded identities; old approval buttons are invalidated.</li>
+</ul>
+<h2>If your session has stopped</h2>
+<ol>
+<li>Reopen it in Codex (for example resume the conversation from the Codex CLI or app) so it is loaded again in the shared daemon.</li>
+<li>DM <code>sessions</code> to Pigeon and press <b>Connect</b> on it.</li>
+<li>Send your instruction in the thread.</li>
+</ol>
+{{sh:What you will see when the old session is gone}}
+You     Continue AgentLane.
+Pigeon  That session has gone offline. I haven’t sent your message.
+        Send “sessions” to reconnect explicitly.
+{{/sh}}
+<h2>Sleep and network loss</h2>
+<p>SDK reconnection and the durable outbox are implemented, but physical sleep and network-drop tests have not been run. Slack is not a guaranteed offline inbox. {{pill:exp}}</p>

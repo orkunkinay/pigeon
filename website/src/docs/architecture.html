@@ -1,0 +1,50 @@
+desc: Modules and data flow, matched to the source.
+---
+<p class="lede">Pigeon is a companion to a runtime that already owns the agent. Slack input crosses a transport boundary into the same Codex thread the normal UI uses.</p>
+<h2>Data flow</h2>
+<figure class="fig"><svg viewBox="0 0 900 360" role="img" aria-label="Slack to ingress to SQLite to router to Codex adapter to the Codex daemon, with approvals and notifications returning through an outbox to Slack">
+<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="var(--green)"/></marker></defs>
+<g class="node"><rect x="10" y="30" width="130" height="54" rx="8"/><text x="28" y="54">Slack DM</text><text class="s" x="28" y="72">Socket Mode</text></g>
+<g class="node"><rect x="190" y="30" width="150" height="54" rx="8"/><text x="206" y="54">Ingress</text><text class="s" x="206" y="72">paired user only</text></g>
+<g class="node"><rect x="390" y="30" width="130" height="54" rx="8"/><text x="406" y="54">SQLite</text><text class="s" x="406" y="72">inbox · outbox</text></g>
+<g class="node"><rect x="570" y="30" width="130" height="54" rx="8"/><text x="586" y="54">Router</text><text class="s" x="586" y="72">classify · select</text></g>
+<g class="node"><rect x="570" y="140" width="130" height="54" rx="8"/><text x="586" y="164">Codex adapter</text><text class="s" x="586" y="182">steer · start · read</text></g>
+<g class="node ext"><rect x="740" y="140" width="150" height="54" rx="8"/><text x="756" y="164">Codex daemon</text><text class="s" x="756" y="182">Unix socket + WS</text></g>
+<g class="node"><rect x="390" y="250" width="130" height="54" rx="8"/><text x="406" y="274">Approvals</text><text class="s" x="406" y="292">one-use tokens</text></g>
+<g class="node"><rect x="570" y="250" width="130" height="54" rx="8"/><text x="586" y="274">Notifications</text><text class="s" x="586" y="292">what deserves a ping</text></g>
+<g class="node"><rect x="190" y="250" width="150" height="54" rx="8"/><text x="206" y="274">Durable outbox</text><text class="s" x="206" y="292">paced · retried</text></g>
+<path class="edge" marker-end="url(#ah)" d="M140 57H188"/><path class="edge" marker-end="url(#ah)" d="M340 57H388"/><path class="edge" marker-end="url(#ah)" d="M520 57H568"/>
+<path class="edge" marker-end="url(#ah)" d="M635 84V138"/><path class="edge" marker-end="url(#ah)" d="M700 167H738"/>
+<path class="edge" marker-end="url(#ah)" d="M815 194V277H702"/><path class="edge" marker-end="url(#ah)" d="M570 277H522"/><path class="edge" marker-end="url(#ah)" d="M390 277H342"/><path class="edge" marker-end="url(#ah)" d="M190 277H75V86"/>
+<text class="lbl-s" x="600" y="228" >events and native requests</text></svg>
+<figcaption>Inbound on the top row; replies, approvals and notifications return along the bottom row through the durable outbox.</figcaption></figure>
+<h2>Modules</h2>
+<div class="tablewrap"><table><thead><tr><th>Path</th><th>Responsibility</th></tr></thead><tbody>
+<tr><td><code>src/transports/slack/</code></td><td>Bolt Socket Mode bridge and authenticated ingress (pairing, DM-only, workspace/user check).</td></tr>
+<tr><td><code>src/router.ts</code></td><td><code>classify()</code> into status, sessions, interrupt, watch, ambiguous or instruction; <code>selectSession()</code> without guessing.</td></tr>
+<tr><td><code>src/runtimes/codex/</code></td><td><code>CodexRpc</code> (WebSocket JSON-RPC) and <code>CodexAdapter</code> (sessions, snapshot, attach, deliver, interrupt).</td></tr>
+<tr><td><code>src/approvals.ts</code></td><td>Native command approvals and single-question input as Slack controls.</td></tr>
+<tr><td><code>src/store.ts</code></td><td>SQLite: bindings, inbox/outbox, approvals, watches, bounded conversation context.</td></tr>
+<tr><td><code>src/conversation/</code></td><td>Voice and personality, status replies, notification policy.</td></tr>
+<tr><td><code>src/agent/</code></td><td>MCP server, tool contracts, local IPC, the human-communication coordinator, skill and installer, verifier.</td></tr>
+<tr><td><code>src/daemon/</code></td><td>Runtime staging under <code>~/.pigeon/runtimes/</code> and the LaunchAgent.</td></tr>
+<tr><td><code>src/security/keychain.ts</code></td><td>macOS Keychain access.</td></tr>
+</tbody></table></div>
+<h2>Agent-initiated path</h2>
+<figure class="fig"><svg viewBox="0 0 900 140" role="img" aria-label="Codex runs the Pigeon MCP server over stdio, which calls the companion over a local Unix socket, which posts to Slack">
+<defs><marker id="ah2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="var(--green)"/></marker></defs>
+<g class="node"><rect x="10" y="40" width="150" height="54" rx="8"/><text x="26" y="64">Agent + skill</text><text class="s" x="26" y="82">decides to ask</text></g>
+<g class="node"><rect x="230" y="40" width="160" height="54" rx="8"/><text x="246" y="64">pigeon mcp</text><text class="s" x="246" y="82">stdio, no tokens</text></g>
+<g class="node"><rect x="460" y="40" width="190" height="54" rx="8"/><text x="476" y="64">Companion</text><text class="s" x="476" y="82">companion.sock 0600</text></g>
+<g class="node"><rect x="720" y="40" width="150" height="54" rx="8"/><text x="736" y="64">Slack DM</text><text class="s" x="736" y="82">your thread</text></g>
+<path class="edge" marker-end="url(#ah2)" d="M160 67H228"/><path class="edge" marker-end="url(#ah2)" d="M390 67H458"/><path class="edge" marker-end="url(#ah2)" d="M650 67H718"/></svg>
+<figcaption>The MCP process never holds Slack credentials or Codex control. Codex supplies the thread ID with each call.</figcaption></figure>
+<h2>Runtime contract</h2>
+<ul>
+<li>Joining uses <code>thread/resume</code> on the same server after a loaded check. The protocol has no atomic “subscribe only if loaded”. <code>docs/UPSTREAM.md</code> proposes one.</li>
+<li>Status reads metadata and the latest turn only. Steering requires <code>expectedTurnId</code>; a turn change makes it fail and it is never retried as <code>turn/start</code>.</li>
+<li>Inbound messages are stored before Slack's envelope is acknowledged; events are deduplicated by ID. Instructions move <code>queued → sending → done</code>; a crash in <code>sending</code> becomes <code>uncertain</code>.</li>
+<li>Outbound posts are chunked, paced at one per second, retried with backoff. Delivery is at-least-once.</li>
+</ul>
+<h2>Not in the code</h2>
+<p>There is no conversation fork, no main-agent controller distinct from the adapter, and no session recovery manager. The longer repo doc is <code>docs/ARCHITECTURE.md</code>.</p>

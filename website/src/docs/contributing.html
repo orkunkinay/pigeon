@@ -1,0 +1,20 @@
+desc: Build, test, and the rules for changes.
+---
+<h2>Develop</h2>
+{{sh:terminal}}
+$ npm ci
+$ npm run check          # tsc --noEmit
+$ npm test               # tsx --test tests/*.test.ts
+$ npm run format:check
+$ npm run build
+{{/sh}}
+<p>Tests never need Slack tokens or a Codex login. They include a real Unix WebSocket fixture, out-of-order RPC correlation, crash recovery without replay, expired queues, ingress authorization and one-use approval controls. Scripts in <code>scripts/</code> are opt-in experiments against a real Codex and consume normal usage; read them first.</p>
+<h2>Rules that keep Pigeon trustworthy</h2>
+<ul><li>A runtime adapter exposes only what it can observe and control.</li><li>Never substitute a resumed transcript for a running worker, retry an uncertain instruction, broaden a security policy, or choose an ambiguous session.</li><li>Add a regression test for any routing, authorization, persistence or protocol fix.</li><li>Never put private session logs, local config, tokens or unredacted screenshots in issues, fixtures or commits.</li></ul>
+<h2>Work on this website</h2>
+{{sh:terminal}}
+$ node website/build.mjs                 # regenerates website/docs/*.html and the search index
+$ python3 -m http.server -d website 8000  # preview at http://localhost:8000
+{{/sh}}
+<p>Docs content lives in <code>website/src/docs/*.html</code>, and the Slack diagrams in <code>website/src/shots.mjs</code>. The site uses only relative links, so it works from a GitHub Pages project subpath.</p>
+<p>Replacing a diagram with a real screenshot: save it under <code>website/assets/screenshots/</code>, redact tokens, workspace names and personal data first, and reference it with <code>&#123;&#123;img:file.png|alt|caption&#125;&#125;</code>.</p>

@@ -1,0 +1,33 @@
+desc: The real routing rules: deterministic intents, observed-state answers, steering, and native approvals.
+---
+<p class="lede">Pigeon's rule is that a casual question should not disturb working code, and an approval should never be a guess. Here is how that is actually implemented today.</p>
+<div class="callout warn"><p><strong>No conversational fork yet.</strong> An earlier design idea was to answer questions in a forked copy of the session. That is <em>not</em> in this codebase. The sections below describe what exists. {{pill:no}}</p></div>
+<h2>The routing table</h2>
+<div class="tablewrap"><table><thead><tr><th>You send</th><th>Intent</th><th>What happens</th><th>Interrupts work?</th></tr></thead><tbody>
+<tr><td>“What are you doing?”, “status”</td><td><code>status</code></td><td>Reads the session's latest turn and replies from observed state. No new turn.</td><td>No</td></tr>
+<tr><td><code>sessions</code>, <code>help</code></td><td><code>sessions</code></td><td>Posts a list of live sessions with Connect buttons.</td><td>No</td></tr>
+<tr><td>“pause”, “stop”</td><td><code>interrupt</code></td><td><code>turn/interrupt</code> on the exact active turn.</td><td>Yes, by request</td></tr>
+<tr><td>“let me know when it’s finished”</td><td><code>watch</code></td><td>Stores a watch on the current turn ID.</td><td>No</td></tr>
+<tr><td>“done”, “yes”, “ok”</td><td><code>ambiguous</code></td><td>Used only if it answers a pending question; otherwise Pigeon asks what to pass along.</td><td>No</td></tr>
+<tr><td>Anything else</td><td><code>instruction</code></td><td><code>turn/steer</code> if a turn is active; <code>turn/start</code> if idle.</td><td>Adds input to the active turn</td></tr>
+</tbody></table></div>
+<h2>Interactive view</h2>
+<div class="routes" aria-label="Routing diagram">
+<div class="route"><div class="a">status phrase<small>fixed list</small></div><div class="arr" aria-hidden="true">→</div><div class="b"><b>Observed-state reply</b><span>Local read. Discussion without execution.</span></div></div>
+<div class="route"><div class="a">anything else<small>instruction</small></div><div class="arr" aria-hidden="true">→</div><div class="b"><b>Original Codex session</b><span>Steer the active turn or start the next one.</span></div></div>
+<div class="route"><div class="a">Codex native request<small>from Codex, not you</small></div><div class="arr" aria-hidden="true">→</div><div class="b"><b>Approvals</b><span>One-use button, bound to request, session, thread and expiry.</span></div></div>
+<div class="route na"><div class="a">question in a forked session</div><div class="arr" aria-hidden="true">→</div><div class="b"><b>Not built {{pill:no}}</b><span>No fork code exists. Free-form questions currently go to the original session.</span></div></div>
+<div class="route na"><div class="a">resume a stopped session</div><div class="arr" aria-hidden="true">→</div><div class="b"><b>Not built {{pill:no}}</b><span>No recovery manager. Pigeon only sees live sessions.</span></div></div>
+</div>
+<h2>Why status is answered locally</h2>
+<p>Asking “what are you doing?” while Codex is mid-task is the most common message. Reading state creates no turn and no user item, which was verified with a real Slack message (the in-progress turn ID was unchanged). The phrase list is deliberately small and deterministic, so Pigeon never claims to understand more than it does.</p>
+<h2>What this means for free-form questions</h2>
+<p>“What's the bottleneck?” is not a recognised phrase, so it is an instruction and reaches the working session. If Codex is mid-turn it enters as steering input. It is better to treat Pigeon as a way to talk to the one agent, not as a separate assistant that is aware of the work.</p>
+<h2>Fail-closed routing</h2>
+<ul>
+<li>A thread with an existing binding uses that session or fails. A stale binding never falls through.</li>
+<li>With no binding, exactly one live session is selected automatically. Several produce a selector. Pigeon does not guess.</li>
+<li>Selecting a session does not send the message that prompted the selector.</li>
+<li>If delivery cannot be confirmed (for example Pigeon crashed mid-send), the instruction is marked uncertain and is <strong>never replayed</strong>. Pigeon tells you to check Codex first.</li>
+<li>Queued instructions expire after five minutes.</li>
+</ul>
