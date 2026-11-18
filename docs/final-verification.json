@@ -1,6 +1,6 @@
 {
-  "date": "2026-11-18T11:03:15.498924+00:00",
-  "sourceCommit": "f8a0150efad41e44010e3ae752267e91488f9769",
+  "date": "2026-11-18T11:26:43.789495+00:00",
+  "sourceCommit": "4e1df8fed9b2588fa812bfe4545a83b47d3b5127",
   "slackConnected": true,
   "codexConnected": true,
   "actualProjectSessionMapped": true,
@@ -12,12 +12,13 @@
   "developmentBotTokenRevokedAndReplaced": true,
   "historySecretScan": {
     "passed": true,
-    "blobsScanned": 123
+    "blobsScanned": 268,
+    "scope": "Text patterns for Slack and OpenAI token formats; not a general secret detector."
   },
   "artifact": {
     "filename": "pigeon-dev-cli-0.1.0.tgz",
-    "bytes": 68862,
-    "sha256": "4db3b0d96efca317e9e45580a8baa6b49c610cdb5ef0a14e25c8900fbf9a7d91"
+    "bytes": 89817,
+    "sha256": "acf886dbe14cdc065d1bd82cb511118f9b8eaa925fe28a84f864f66dcface5fb"
   },
   "remotePublicationPerformed": false,
   "personalityVerification": {
@@ -25,5 +26,15 @@
     "liveEvidence": "docs/personality-proof.json",
     "voice": "colleague",
     "shortConversationExpiry": false
+  },
+  "agentIntegration": {
+    "testsPassed": 54,
+    "skillDiscovered": true,
+    "mcpToolsVerified": true,
+    "registrationEnabled": true,
+    "freshSessionNotificationEvidence": "docs/awareness-notify-proof.json",
+    "correlatedReplyEvidence": "docs/awareness-ask-proof.json",
+    "globalApprovalPolicyChanged": false,
+    "cleanPackageVerified": true
   }
 }
