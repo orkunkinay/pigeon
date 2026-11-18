@@ -1,3 +1,4 @@
+import { Notifications } from '../src/conversation/notifications.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SlackBridge } from '../src/transports/slack/bridge.js';
@@ -38,6 +39,11 @@ function setup(output = 'Tests: 2 failed, 18 passed, 20 total') {
     store,
     voice: new Voice(),
     adapter,
+    notifications: new Notifications(
+      store,
+      () => new Voice(),
+      async () => session.project,
+    ),
     approvals: {
       answer() {
         return false;

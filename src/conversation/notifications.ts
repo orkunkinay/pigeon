@@ -14,6 +14,30 @@ export class Notifications {
     private project: (id: string) => Promise<string>,
     private now = () => Date.now(),
   ) {}
+  async expectReply(
+    session: string,
+    turn: string,
+    channel: string,
+    root: string,
+    question: string,
+  ) {
+    this.store.expectReply(session, turn, channel, root, question);
+    const outcome = this.store.db
+      .prepare('SELECT * FROM turn_outcomes WHERE session=? AND turn=?')
+      .get(session, turn) as any;
+    if (outcome)
+      await this.handle({
+        method: 'turn/completed',
+        params: {
+          threadId: session,
+          turn: {
+            id: turn,
+            status: outcome.status,
+            error: outcome.error ? { message: outcome.error } : null,
+          },
+        },
+      });
+  }
   async handle(m: RpcMessage) {
     const p = m.params;
     if (!p?.threadId) return;
@@ -70,6 +94,15 @@ export class Notifications {
       }
     }
     if (m.method !== 'turn/completed') return;
+    this.store.db
+      .prepare('INSERT OR REPLACE INTO turn_outcomes VALUES(?,?,?,?,?)')
+      .run(
+        p.threadId,
+        turn,
+        p.turn.status,
+        p.turn.error?.message?.slice(0, 2500) || null,
+        Date.now(),
+      );
     const watch = this.store.db
       .prepare('SELECT * FROM watches WHERE session=? AND turn=?')
       .get(p.threadId, turn) as any;
@@ -117,9 +150,6 @@ export class Notifications {
       this.store.db.prepare('DELETE FROM watches WHERE session=? AND turn=?').run(p.threadId, turn);
     this.store.db
       .prepare('DELETE FROM awaited_replies WHERE session=? AND turn=?')
-      .run(p.threadId, turn);
-    this.store.db
-      .prepare('DELETE FROM turn_messages WHERE session=? AND turn=?')
       .run(p.threadId, turn);
   }
   async recover(session: string, snapshot: any) {

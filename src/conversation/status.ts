@@ -39,9 +39,9 @@ export function observedTests(thread: any): TestResult | undefined {
       .findLast((l: string) =>
         /^\s*(?:Tests\s*:|Tests\s+\d|\d+ (?:passed|failed)[,\s]|=+.*\d+ (?:passed|failed))/.test(l),
       ) || '';
-  const pass = output.match(/^# pass (\d+)\s*$/m)?.[1] || line.match(/(\d+) passed\b/)?.[1];
-  const fail = output.match(/^# fail (\d+)\s*$/m)?.[1] || line.match(/(\d+) failed\b/)?.[1];
-  const total = output.match(/^# tests (\d+)\s*$/m)?.[1] || line.match(/(\d+) total\b/)?.[1];
+  const pass = output.match(/^(?:#|ℹ) pass (\d+)\s*$/m)?.[1] || line.match(/(\d+) passed\b/)?.[1];
+  const fail = output.match(/^(?:#|ℹ) fail (\d+)\s*$/m)?.[1] || line.match(/(\d+) failed\b/)?.[1];
+  const total = output.match(/^(?:#|ℹ) tests (\d+)\s*$/m)?.[1] || line.match(/(\d+) total\b/)?.[1];
   if (pass === undefined && fail === undefined) return;
   const failures = output
     .split('\n')

@@ -283,7 +283,7 @@ export class SlackBridge {
     const input = this.voice.runtimeInput(text, this.store.conversation(channel, root, session.id));
     const delivery = await this.adapter.deliver(session.id, input, `pigeon:${id}`);
     const turnId = delivery.turnId || delivery.turn?.id;
-    if (turnId) this.store.expectReply(session.id, turnId, channel, root, text);
+
     this.store.post(
       `delivered:${id}`,
       channel,
@@ -292,6 +292,7 @@ export class SlackBridge {
         project: session.project,
       }),
     );
+    if (turnId) await this.notifications.expectReply(session.id, turnId, channel, root, text);
   }
   private async tick() {
     if (this.busy || !this.running) return;

@@ -18,6 +18,7 @@ export class Store {
    CREATE TABLE IF NOT EXISTS approvals(token TEXT PRIMARY KEY, generation TEXT, rpc_id TEXT, session TEXT, channel TEXT, root TEXT, method TEXT, params TEXT, status TEXT, expires INTEGER);
    CREATE TABLE IF NOT EXISTS dialogue(channel TEXT, root TEXT, session TEXT, question TEXT, answer TEXT, updated INTEGER, PRIMARY KEY(channel,root));
    CREATE TABLE IF NOT EXISTS awaited_replies(session TEXT, turn TEXT, channel TEXT, root TEXT, question TEXT, created INTEGER, answered INTEGER DEFAULT 0, PRIMARY KEY(session,turn));
+   CREATE TABLE IF NOT EXISTS turn_outcomes(session TEXT, turn TEXT, status TEXT, error TEXT, created INTEGER, PRIMARY KEY(session,turn));
    CREATE TABLE IF NOT EXISTS turn_messages(session TEXT, turn TEXT, item TEXT, text TEXT, PRIMARY KEY(session,turn));
    CREATE TABLE IF NOT EXISTS progress_notifications(session TEXT PRIMARY KEY, updated INTEGER);
    CREATE TABLE IF NOT EXISTS watches(session TEXT PRIMARY KEY, channel TEXT, root TEXT, turn TEXT);
@@ -155,6 +156,12 @@ export class Store {
       )
       .run();
     this.db.prepare('DELETE FROM awaited_replies WHERE created<?').run(Date.now() - 86400000);
+    this.db
+      .prepare(
+        'DELETE FROM turn_messages WHERE EXISTS (SELECT 1 FROM turn_outcomes WHERE turn_outcomes.session=turn_messages.session AND turn_outcomes.turn=turn_messages.turn AND created<?)',
+      )
+      .run(Date.now() - 86400000);
+    this.db.prepare('DELETE FROM turn_outcomes WHERE created<?').run(Date.now() - 86400000);
     this.db
       .prepare(
         'DELETE FROM turn_messages WHERE rowid NOT IN (SELECT rowid FROM turn_messages ORDER BY rowid DESC LIMIT 100)',

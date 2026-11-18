@@ -120,3 +120,13 @@ test('a requested turn gets one conversational update and its final answer, not 
   assert.match(s.outgoing().at(-1).text, /Both tests now pass/);
   s.close();
 });
+test('a fast final answer received before the delivery RPC result is not lost in quiet mode', async () => {
+  const { s, n } = setup('quiet');
+  await n.handle(message('fast', 'The two failures are browser reconnection cases.'));
+  await n.handle(complete());
+  assert.equal(s.outgoing().length, 0);
+  await n.expectReply('a', 'turn', 'D', 'root', "What's failing?");
+  assert.equal(s.outgoing().length, 1);
+  assert.match(s.outgoing()[0].text, /browser reconnection cases/);
+  s.close();
+});

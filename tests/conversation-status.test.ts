@@ -80,3 +80,11 @@ test('detailed status exposes observed command details while brief status stays 
     /npm test/,
   );
 });
+test('Node’s spec reporter is recognized as observed test output', () => {
+  assert.deepEqual(observedTests(thread('ℹ tests 41\nℹ pass 41\nℹ fail 0', 'node --test')), {
+    passed: 41,
+    failed: 0,
+    total: 41,
+    failures: [],
+  });
+});

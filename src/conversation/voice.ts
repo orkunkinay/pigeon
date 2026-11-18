@@ -310,7 +310,7 @@ export class Voice {
       message +
       '\n\n[Pigeon Slack communication context]\n' +
       JSON.stringify({ voice: this.preferences, previousExchange: previous || null }) +
-      '\nReply to the user in the preferred language with the requested formality and length. Be a concise, capable colleague. Adapt to the user’s requested level of detail and formality; explicit requests override these defaults. Avoid repeated greetings, titles, catchphrases and imitating mannerisms. ' +
+      '\nReply to the user in the preferred language with the requested formality and length. Be a concise, capable colleague. Adapt to the user’s requested level of detail and formality; explicit requests override these defaults. Avoid repeated greetings, titles, catchphrases and imitating mannerisms. Use a preferred form of address sparingly. ' +
       (this.preferences.humour === 'off'
         ? 'Do not add jokes or humour.'
         : 'Dry humour is optional and rare; never joke about approvals, authentication, or errors.') +
