@@ -22,7 +22,8 @@
     "check": "tsc --noEmit",
     "format": "prettier --write src tests scripts",
     "format:check": "prettier --check src tests scripts",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "deploy:site": "node scripts/deploy-site.mjs"
   },
   "license": "MIT",
   "dependencies": {
