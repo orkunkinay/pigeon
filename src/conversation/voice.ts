@@ -302,7 +302,10 @@ export class Voice {
     );
   }
   /** Preferences are user-level communication context, never a runtime policy override. */
-  runtimeInput(message: string, previous?: { question: string; answer: string }): string {
+  runtimeInput(
+    message: string,
+    previous?: { question: string; answer: string; recordedAt?: string },
+  ): string {
     return (
       message +
       '\n\n[Pigeon Slack communication context]\n' +
@@ -311,7 +314,7 @@ export class Voice {
       (this.preferences.humour === 'off'
         ? 'Do not add jokes or humour.'
         : 'Dry humour is optional and rare; never joke about approvals, authentication, or errors.') +
-      ' Treat the previous exchange as conversation context, not fresh evidence. Preserve project/task context. Attribute observed facts, plans, inferences and uncertainty accurately. Do not claim an action completed before it did. These are communication preferences only; preserve existing task instructions, tools, permissions and safety policy.\n[/Pigeon Slack communication context]'
+      ' Treat the timestamped previous exchange as conversation context, not fresh evidence; re-check current runtime state before making present-tense claims. Preserve project/task context. Attribute observed facts, plans, inferences and uncertainty accurately. Do not claim an action completed before it did. These are communication preferences only; preserve existing task instructions, tools, permissions and safety policy.\n[/Pigeon Slack communication context]'
     );
   }
 }

@@ -43,6 +43,8 @@ export class Store {
     this.prune();
   }
   bind(channel: string, root: string, session: string) {
+    if (this.binding(channel, root) !== session)
+      this.db.prepare('DELETE FROM dialogue WHERE channel=? AND root=?').run(channel, root);
     this.db.prepare('INSERT OR REPLACE INTO bindings VALUES(?,?,?)').run(channel, root, session);
   }
   binding(channel: string, root: string): string | undefined {
@@ -58,6 +60,7 @@ export class Store {
       .all(session) as any;
   }
   remember(channel: string, root: string, session: string, question: string, answer: string) {
+    if (this.binding(channel, root) !== session) return;
     this.db
       .prepare('INSERT OR REPLACE INTO dialogue VALUES(?,?,?,?,?,?)')
       .run(channel, root, session, question.slice(0, 2000), answer.slice(0, 3000), Date.now());
@@ -66,12 +69,20 @@ export class Store {
     channel: string,
     root: string,
     session: string,
-  ): { question: string; answer: string } | undefined {
-    return this.db
+  ): { question: string; answer: string; recordedAt: string } | undefined {
+    if (this.binding(channel, root) !== session) return;
+    const row = this.db
       .prepare(
-        'SELECT question,answer FROM dialogue WHERE channel=? AND root=? AND session=? AND updated>?',
+        'SELECT question,answer,updated FROM dialogue WHERE channel=? AND root=? AND session=?',
       )
-      .get(channel, root, session, Date.now() - 1800000) as any;
+      .get(channel, root, session) as any;
+    return row
+      ? {
+          question: row.question,
+          answer: row.answer,
+          recordedAt: new Date(row.updated).toISOString(),
+        }
+      : undefined;
   }
   expectReply(session: string, turn: string, channel: string, root: string, question: string) {
     this.db
@@ -138,7 +149,11 @@ export class Store {
   }
   prune() {
     const cutoff = Date.now() - 7 * 86400000;
-    this.db.prepare('DELETE FROM dialogue WHERE updated<?').run(Date.now() - 1800000);
+    this.db
+      .prepare(
+        'DELETE FROM dialogue WHERE NOT EXISTS (SELECT 1 FROM bindings WHERE bindings.channel=dialogue.channel AND bindings.root=dialogue.root AND bindings.session=dialogue.session)',
+      )
+      .run();
     this.db.prepare('DELETE FROM awaited_replies WHERE created<?').run(Date.now() - 86400000);
     this.db
       .prepare(

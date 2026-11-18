@@ -55,12 +55,20 @@ test('unknown failure names are delegated; a failed command is not a completed t
   assert.match(statusReply(session, t, 'status')!, /Last update from Codex/);
   assert.ok(!statusReply(session, t, 'status')!.includes('Changes are committed'));
 });
-test('follow-up context stays scoped to its session and expires', () => {
+test('follow-up context survives a long pause but is discarded when the thread changes projects', () => {
   const store = new Store(':memory:');
+  store.bind('D', 'root', 'a');
   store.remember('D', 'root', 'a', 'Status?', '18 of 20 tests passing.');
   assert.ok(store.conversation('D', 'root', 'a'));
   assert.equal(store.conversation('D', 'root', 'b'), undefined);
   store.db.prepare('UPDATE dialogue SET updated=?').run(Date.now() - 1800001);
+  store.prune();
+  assert.ok(store.conversation('D', 'root', 'a'));
+  assert.ok(store.conversation('D', 'root', 'a')!.recordedAt);
+  store.bind('D', 'root', 'b');
+  assert.equal(store.conversation('D', 'root', 'b'), undefined);
+  assert.equal(store.conversation('D', 'root', 'a'), undefined);
+  store.bind('D', 'root', 'a');
   assert.equal(store.conversation('D', 'root', 'a'), undefined);
   store.close();
 });

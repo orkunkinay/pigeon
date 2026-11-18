@@ -28,3 +28,19 @@ test('a crash during command delivery never replays the command and notifies its
     rmSync(dir, { recursive: true, force: true });
   }
 });
+test('the last conversational exchange survives a real database reopen without a short time cutoff', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pigeon-dialogue-')),
+    path = join(dir, 'state.sqlite');
+  try {
+    const first = new Store(path);
+    first.bind('D', 'root', 'session');
+    first.remember('D', 'root', 'session', 'What failed?', 'Two browser reconnection tests.');
+    first.db.prepare('UPDATE dialogue SET updated=?').run(Date.now() - 86400000);
+    first.close();
+    const reopened = new Store(path);
+    assert.match(reopened.conversation('D', 'root', 'session')!.answer, /reconnection/);
+    reopened.close();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
