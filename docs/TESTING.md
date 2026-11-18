@@ -38,7 +38,7 @@ passing it a thread ID is not an attachment mechanism. No locks were bypassed.
 | Slack instruction → delivery acknowledgment | About 1.39 s | One actual conversation, including the one-second bridge scheduling cycle. |
 | Slack instruction → agent final reply | About 8.30 s | Includes model/runtime execution. Not isolated bridge overhead. |
 | Structured Slack answer → bridge acknowledgment | About 0.67 s | One sample; original agent confirmation followed about 2.57 s after the reply. |
-| Clean npm install + durable runtime staging | 3.3 s | Warm npm cache; no Slack account onboarding included. |
+| Clean npm install + durable runtime staging | 1.5 s latest run (3.3 s first run) | Warm npm cache; no Slack account onboarding included. |
 | Idle Pigeon service | About 121 MiB RSS, 0.3% CPU | One `ps` sample after startup. Platform load and SDK versions affect this. |
 | Setup manual work | App creation/manifest, workspace authorization, two token transfers, pairing | One-time standalone flow; this development session automated browser actions. No claim of a measured one-click setup. |
 | Misrouting | No misroute observed in these two-worker checks | Too few samples to claim a statistical zero failure rate. |

@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-18T01:44:54Z",
+  "sourceCommit": "d9a3c500b9c7ed34bb906202ff03095113c530b5",
+  "slackConnected": true,
+  "codexConnected": true,
+  "actualProjectSessionMapped": true,
+  "durableLaunchAgentInstalled": true,
+  "botScopes": [
+    "chat:write",
+    "im:history"
+  ],
+  "developmentBotTokenRevokedAndReplaced": true,
+  "historySecretScan": {
+    "passed": true,
+    "blobsScanned": 123
+  },
+  "artifact": {
+    "filename": "pigeon-dev-cli-0.1.0.tgz",
+    "bytes": 54213,
+    "sha256": "63a6119367ac1366f0237bdbc8ee2c0bcdde2687fc8efaec6f9584b69d4e8b1c"
+  },
+  "remotePublicationPerformed": false
+}

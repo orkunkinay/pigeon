@@ -1,9 +1,9 @@
 {
-  "date": "2026-11-18T01:30:35.760Z",
+  "date": "2026-11-18T01:42:55.058Z",
   "node": "v24.18.0",
   "cleanPrefixInstall": true,
   "cliHelp": true,
   "immutableRuntimeSurvivedSourceDeletion": true,
-  "totalInstallAndStageMs": 3285,
-  "tarballBytes": 53305
+  "totalInstallAndStageMs": 1508,
+  "tarballBytes": 54213
 }
