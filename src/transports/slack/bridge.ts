@@ -7,7 +7,7 @@ import { CodexRpc, type RpcMessage } from '../../runtimes/codex/rpc.js';
 import { CodexAdapter } from '../../runtimes/codex/adapter.js';
 import { Approvals } from '../../approvals.js';
 import { classify, selectSession, statusText } from '../../router.js';
-import { log, failure } from '../../log.js';
+import { log, failure, slackLogger } from '../../log.js';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 const { App, SocketModeReceiver } = bolt;
@@ -34,6 +34,8 @@ export class SlackBridge {
   private backoff = 1000;
   private subscribed = new Set<string>();
   private serial = Promise.resolve();
+  private nextPostAt = 0;
+  private nextPruneAt = 0;
   constructor(
     readonly config: Config,
     readonly store: Store,
@@ -45,6 +47,7 @@ export class SlackBridge {
     store.invalidateApprovals();
     this.receiver = new SocketModeReceiver({
       appToken,
+      logger: slackLogger,
       logLevel: bolt.LogLevel.ERROR,
       customPropertiesExtractor: ({ body }: any) => {
         this.receive(body);
@@ -60,6 +63,7 @@ export class SlackBridge {
       });
     this.app = new App({
       token: botToken,
+      logger: slackLogger,
       receiver: this.receiver,
       logLevel: bolt.LogLevel.ERROR,
       clientOptions: { timeout: 10000, retryConfig: { retries: 2 } },
@@ -161,12 +165,29 @@ export class SlackBridge {
       return;
     }
     if (!authorized(this.config, body.team_id, event.user, event.channel)) return;
-    this.store.enqueue(
+    const eventId = body.event_id || event.client_msg_id || `${event.channel}:${event.ts}`;
+    if (!this.rpc.connected && classify(event.text) === 'interrupt') {
+      this.store.post(
+        `offline-stop:${eventId}`,
+        event.channel,
+        event.thread_ts || event.ts,
+        'Codex is disconnected. The stop request was not sent or queued; stop it locally if needed.',
+      );
+      return;
+    }
+    const inserted = this.store.enqueue(
       body.event_id || event.client_msg_id || `${event.channel}:${event.ts}`,
       event.channel,
       event.thread_ts || event.ts,
       event.text,
     );
+    if (inserted && !this.rpc.connected)
+      this.store.post(
+        `queued:${eventId}`,
+        event.channel,
+        event.thread_ts || event.ts,
+        'Codex is disconnected. Your message is queued for at most five minutes and will use this thread’s session mapping.',
+      );
   }
   private schedule(fn: () => Promise<void>) {
     this.serial = this.serial.then(fn).catch(() => failure('runtime_notification'));
@@ -249,7 +270,10 @@ export class SlackBridge {
       await this.choose(channel, root);
       return;
     }
-    if (this.approvals.answer(channel, root, text)) {
+    if (
+      (intent === 'instruction' || intent === 'ambiguous') &&
+      this.approvals.answer(channel, root, text)
+    ) {
       this.store.post(
         `reply:${id}`,
         channel,
@@ -346,6 +370,7 @@ export class SlackBridge {
           this.backoff = Math.min(30000, this.backoff * 2);
         }
       }
+      this.store.expireQueued();
       if (this.rpc.connected && this.config.userId) {
         // Restore subscriptions only to exact currently loaded identities.
         for (const { session } of this.store.db
@@ -383,22 +408,26 @@ export class SlackBridge {
         }
       }
       this.approvals.expire();
-      for (const row of this.store.outgoing().slice(0, 1)) {
+      this.store.expireQueued();
+      if (Date.now() >= this.nextPruneAt) {
+        this.store.prune();
+        this.nextPruneAt = Date.now() + 3600000;
+      }
+      for (const row of Date.now() >= this.nextPostAt ? this.store.outgoing().slice(0, 1) : []) {
         try {
-          const chunks = (row.text || '').match(/[\s\S]{1,3500}/g) || [''];
-          for (let n = 0; n < chunks.length; n++)
-            await this.app.client.chat.postMessage({
-              channel: row.channel,
-              thread_ts: row.root,
-              text: chunks[n],
-              blocks: row.blocks && n === 0 ? JSON.parse(row.blocks) : undefined,
-              unfurl_links: false,
-              unfurl_media: false,
-              parse: 'none',
-              metadata: { event_type: 'pigeon_message', event_payload: { id: row.id, part: n } },
-            });
+          await this.app.client.chat.postMessage({
+            channel: row.channel,
+            thread_ts: row.root,
+            text: row.text,
+            blocks: row.blocks ? JSON.parse(row.blocks) : undefined,
+            unfurl_links: false,
+            unfurl_media: false,
+            parse: 'none',
+          });
+          this.nextPostAt = Date.now() + 1000;
           this.store.sent(row.id);
         } catch {
+          this.nextPostAt = Date.now() + 30000;
           failure('slack_delivery');
           break;
         }

@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-18T01:11:57.941Z",
+  "threadId": "01a1ec34-23f3-78f3-93eb-13b277bfa211",
+  "mode": "plan",
+  "requests": [
+    {
+      "id": 1,
+      "method": "item/tool/requestUserInput"
+    }
+  ],
+  "status": "completed",
+  "turnId": "01a1ec35-e6f6-70f3-a079-c3803a0ada1e"
+}

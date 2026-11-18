@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { home } from '../config.js';
+import { stageRuntime } from './runtime.js';
 const exec = promisify(execFile);
 export const label = 'dev.pigeon.companion';
 export const plistPath = join(homedir(), 'Library/LaunchAgents', label + '.plist');
@@ -21,9 +22,10 @@ export async function installService(cli: string) {
   await mkdir(home, { recursive: true, mode: 0o700 });
   await mkdir(join(homedir(), 'Library/LaunchAgents'), { recursive: true });
   await writeFile(join(home, 'pigeon.log'), '', { flag: 'a', mode: 0o600 });
+  const stableCli = await stageRuntime(cli);
   await writeFile(
     plistPath,
-    plist(process.execPath, resolve(cli), process.env.PATH || '/usr/bin:/bin'),
+    plist(process.execPath, stableCli, process.env.PATH || '/usr/bin:/bin'),
     { mode: 0o600 },
   );
   await exec('/bin/launchctl', ['bootout', `gui/${process.getuid!()}/${label}`]).catch(() => {});

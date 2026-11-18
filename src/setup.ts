@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { WebClient } from '@slack/web-api';
 import { writeSecret } from './security/keychain.js';
 import { saveConfig } from './config.js';
+import { slackLogger } from './log.js';
 const exec = promisify(execFile);
 export async function setup(codexBin: string) {
   if (process.platform !== 'darwin')
@@ -60,12 +61,17 @@ export async function setup(codexBin: string) {
         app = p.get('app') || '';
       if (!bot.startsWith('xoxb-') || !app.startsWith('xapp-')) throw Error();
       stage = 'bot-validation';
-      const client = new WebClient(bot, { timeout: 10000, retryConfig: { retries: 0 } });
+      const client = new WebClient(bot, {
+        logger: slackLogger,
+        timeout: 10000,
+        retryConfig: { retries: 0 },
+      });
       const auth = await client.auth.test();
       if (!auth.team_id) throw Error();
       // Validate Socket Mode token independently without printing its temporary connection URL.
       stage = 'app-validation';
       const check = await new WebClient(app, {
+        logger: slackLogger,
         timeout: 10000,
         retryConfig: { retries: 0 },
       }).apiCall('apps.connections.open');

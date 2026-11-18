@@ -58,17 +58,41 @@ export class Store {
   state(id: string, status: string) {
     this.db
       .prepare(
-        "UPDATE inbox SET status=?,text=CASE WHEN ? IN ('done','uncertain') THEN NULL ELSE text END WHERE id=?",
+        "UPDATE inbox SET status=?,text=CASE WHEN ? IN ('done','uncertain','expired') THEN NULL ELSE text END WHERE id=?",
       )
       .run(status, status, id);
   }
   post(id: string, channel: string, root: string, text: string, blocks?: unknown[]) {
-    this.db
-      .prepare(
-        'INSERT OR IGNORE INTO outbox(id,channel,root,text,blocks,created) VALUES(?,?,?,?,?,?)',
-      )
-      .run(id, channel, root, text, blocks ? JSON.stringify(blocks) : null, Date.now());
+    const chunks = blocks ? [text.slice(0, 3500)] : text.match(/[\s\S]{1,3500}/gu) || [''];
+    for (let n = 0; n < chunks.length; n++)
+      this.db
+        .prepare(
+          'INSERT OR IGNORE INTO outbox(id,channel,root,text,blocks,created) VALUES(?,?,?,?,?,?)',
+        )
+        .run(
+          n === 0 ? id : `${id}:part:${n}`,
+          channel,
+          root,
+          chunks[n],
+          n === 0 && blocks ? JSON.stringify(blocks) : null,
+          Date.now(),
+        );
   }
+  expireQueued() {
+    const rows = this.db
+      .prepare("SELECT id,channel,root FROM inbox WHERE status='queued' AND created<?")
+      .all(Date.now() - 300000) as any[];
+    for (const row of rows) {
+      this.state(row.id, 'expired');
+      this.post(
+        `expired:${row.id}`,
+        row.channel,
+        row.root,
+        'This queued message expired after five minutes and was not delivered. Send it again if it is still relevant.',
+      );
+    }
+  }
+
   outgoing(): any[] {
     return this.db
       .prepare('SELECT * FROM outbox WHERE sent=0 ORDER BY created,rowid LIMIT 25')

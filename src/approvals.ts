@@ -44,7 +44,7 @@ export class Approvals {
       );
     const command = m.method === 'item/commandExecution/requestApproval';
     // Refuse to offer truncated, additional-permission, or unknown approval variants remotely.
-    const actionable =
+    let actionable =
       command &&
       !!p.command &&
       p.command.length < 2200 &&
@@ -53,6 +53,7 @@ export class Approvals {
     const text = command
       ? `Codex requests a one-time command approval.\nProject directory: ${p.cwd || 'unknown'}\nAction: ${p.command || 'not supplied'}\nReason: ${p.reason || 'not supplied'}`
       : `Codex needs your input:\n${(p.questions || []).map((q: any) => `${q.header}: ${q.question}\n${(q.options || []).map((o: any) => o.label + ': ' + o.description).join('\n')}`).join('\n\n')}\nReply in this thread. This response will be delivered to the original request.`;
+    actionable = actionable && text.length <= 2900;
     const blocks: any[] = [
       { type: 'section', text: { type: 'plain_text', text: text.slice(0, 2900) } },
     ];
@@ -110,6 +111,8 @@ export class Approvals {
       decision === 'accept' &&
       (!p.command ||
         p.command.length >= 2200 ||
+        `Codex requests a one-time command approval.\nProject directory: ${p.cwd || 'unknown'}\nAction: ${p.command || 'not supplied'}\nReason: ${p.reason || 'not supplied'}`
+          .length > 2900 ||
         p.additionalPermissions ||
         (p.availableDecisions && !p.availableDecisions.includes('accept')))
     )
