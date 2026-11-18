@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { shots } from './src/shots.mjs';
 const root = dirname(fileURLToPath(import.meta.url));
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const REPO = 'https://github.com/Murat-Barkin-Kinay/pigeon';
+const REPO = 'https://github.com/orkunkinay/pigeon';
 const pages = [
   ['index', 'Overview', 'Start'], ['getting-started', 'Getting started', 'Start'],
   ['slack-setup', 'Slack setup', 'Set up'], ['codex-integration', 'Codex integration', 'Set up'],
