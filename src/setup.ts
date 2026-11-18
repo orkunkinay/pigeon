@@ -4,13 +4,18 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { WebClient } from '@slack/web-api';
-import { writeSecret } from './security/keychain.js';
-import { saveConfig } from './config.js';
+import { readSecret, writeSecret } from './security/keychain.js';
+import { readConfig, saveConfig } from './config.js';
 import { slackLogger } from './log.js';
 const exec = promisify(execFile);
 export async function setup(codexBin: string) {
   if (process.platform !== 'darwin')
     throw new Error('Automatic secure setup currently supports macOS only.');
+  let previous: ReturnType<typeof readConfig> | undefined;
+  try {
+    previous = readConfig();
+  } catch {}
+  const savedApp = previous ? await readSecret('app').catch(() => '') : '';
   const nonce = randomBytes(24).toString('hex');
   const path = '/' + nonce;
   const manifest = await readFile(new URL('../slack-manifest.json', import.meta.url), 'utf8');
@@ -33,7 +38,7 @@ export async function setup(codexBin: string) {
     if (req.method === 'GET') {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.end(
-        `<!doctype html><title>Pigeon setup</title><style>body{font:17px system-ui;max-width:680px;margin:60px auto;padding:24px;color:#183b30}input,textarea{display:block;width:100%;padding:12px;margin:12px 0;box-sizing:border-box}button{padding:12px 24px}textarea{height:160px}</style><h1>Pigeon</h1><p>Your coding agent is one message away.</p><ol><li><a href="https://api.slack.com/apps" target="_blank" rel="noreferrer">Create a Slack app</a> using “Paste a manifest”. Use the manifest below and choose your workspace.</li><li>Install the app in that workspace. Copy its Bot User OAuth Token.</li><li>Under Basic Information, generate an App-Level Token with only <code>connections:write</code>.</li></ol><textarea readonly>${manifest.replaceAll('&', '&amp;').replaceAll('<', '&lt;')}</textarea><form method="post" autocomplete="off"><input type="hidden" name="csrf" value="${nonce}"><label>Bot token<input name="bot" type="password" autocomplete="off" required></label><label>App-level token<input name="app" type="password" autocomplete="off" required></label><button>Save to Keychain</button></form><p>Tokens go directly to this local process and macOS Keychain. Slack’s developer authorization is required once. No hosted service or public webhook is used.</p>`,
+        `<!doctype html><title>Pigeon setup</title><style>body{font:17px system-ui;max-width:680px;margin:60px auto;padding:24px;color:#183b30}input,textarea{display:block;width:100%;padding:12px;margin:12px 0;box-sizing:border-box}button{padding:12px 24px}textarea{height:160px}</style><h1>Pigeon</h1><p>Your coding agent is one message away.</p><ol><li><a href="https://api.slack.com/apps" target="_blank" rel="noreferrer">Create a Slack app</a> using “Paste a manifest”. Use the manifest below and choose your workspace.</li><li>Install the app in that workspace. Copy its Bot User OAuth Token.</li><li>Under Basic Information, generate an App-Level Token with only <code>connections:write</code>.</li></ol><textarea readonly>${manifest.replaceAll('&', '&amp;').replaceAll('<', '&lt;')}</textarea><form method="post" autocomplete="off"><input type="hidden" name="csrf" value="${nonce}"><label>Bot token<input name="bot" type="password" autocomplete="off" required></label><label>App-level token${savedApp ? ' (leave blank to keep the saved token)' : ''}<input name="app" type="password" autocomplete="off" ${savedApp ? '' : 'required'}></label><button>Save to Keychain</button></form><p>Tokens go directly to this local process and macOS Keychain. Slack’s developer authorization is required once. No hosted service or public webhook is used.</p>`,
       );
       return;
     }
@@ -58,7 +63,7 @@ export async function setup(codexBin: string) {
       const p = new URLSearchParams(body);
       if (p.get('csrf') !== nonce) throw Error();
       const bot = p.get('bot') || '',
-        app = p.get('app') || '';
+        app = p.get('app') || savedApp;
       if (!bot.startsWith('xoxb-') || !app.startsWith('xapp-')) throw Error();
       stage = 'bot-validation';
       const client = new WebClient(bot, {
@@ -80,7 +85,11 @@ export async function setup(codexBin: string) {
       await writeSecret('bot', bot);
       stage = 'keychain-app';
       await writeSecret('app', app);
-      saveConfig({ teamId: auth.team_id, codexBin });
+      saveConfig({
+        ...(previous?.teamId === auth.team_id ? previous : {}),
+        teamId: auth.team_id,
+        codexBin,
+      });
       res.end(
         'Pigeon credentials saved in macOS Keychain. Return to the terminal to pair your Slack user. You can close this tab.',
       );
@@ -95,17 +104,30 @@ export async function setup(codexBin: string) {
     }
   });
   let resolveSetup: () => void = () => {};
-  const completed = new Promise<void>((r) => {
+  let rejectSetup: (error: Error) => void = () => {};
+  const completed = new Promise<void>((r, reject) => {
     resolveSetup = r;
+    rejectSetup = reject;
   });
+  server.on('error', () => rejectSetup(new Error('Local setup server unavailable')));
   server.listen(0, '127.0.0.1');
   await new Promise<void>((r) => server.once('listening', r));
   const address = server.address() as any;
   const url = `http://127.0.0.1:${address.port}${path}`;
   console.log(`Open local setup: ${url}`);
   await exec('/usr/bin/open', [url]);
-  const timeout = setTimeout(() => server.close(), 20 * 60 * 1000);
+  const timeout = setTimeout(
+    () => {
+      server.close();
+      rejectSetup(new Error('Setup expired after twenty minutes'));
+    },
+    20 * 60 * 1000,
+  );
   timeout.unref();
-  await completed;
-  clearTimeout(timeout);
+  try {
+    await completed;
+  } finally {
+    clearTimeout(timeout);
+    server.close();
+  }
 }

@@ -31,9 +31,20 @@ async function run() {
   }
   if (command === 'setup') {
     const { stdout } = await exec('/usr/bin/which', ['codex']);
-    await setup(stdout.trim());
-    console.log('Credentials saved. Pairing starts now.');
-    await daemon(true);
+    let configured = false;
+    try {
+      readConfig();
+      configured = true;
+    } catch {}
+    if (configured) await removeService();
+    try {
+      await setup(stdout.trim());
+      console.log('Credentials saved. Completing installation.');
+      await daemon(true);
+    } catch (e) {
+      if (configured) await installService(fileURLToPath(import.meta.url));
+      throw e;
+    }
     return;
   }
   if (command === 'install-service') {
