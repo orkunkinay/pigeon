@@ -29,9 +29,12 @@ test('real Codex registration is idempotent and uninstall preserves unrelated co
     await installAgentIntegration(codex, '/stable/cli.js', p);
     const instructions = await readFile(installed.instructionPath, 'utf8');
     assert.equal(instructions.split('<!-- pigeon:begin -->').length - 1, 1);
-    assert.equal((await registration(codex, p)).transport.args[0], '/stable/cli.js');
+    assert.equal(
+      (await registration(codex, p)).transport.args[0],
+      join(p.pigeonHome, 'agent-mcp.mjs'),
+    );
     await installAgentIntegration(codex, '/new-stable/cli.js', p);
-    assert.equal((await registration(codex, p)).transport.args[0], '/new-stable/cli.js');
+    assert.match(await readFile(join(p.pigeonHome, 'agent-mcp.mjs'), 'utf8'), /new-stable/);
     assert.deepEqual(await removeAgentIntegration(codex, p), []);
     assert.equal(await readFile(installed.instructionPath, 'utf8'), 'Keep this user guidance.');
     assert.match(

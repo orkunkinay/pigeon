@@ -19,8 +19,13 @@ import { installService, removeService } from './daemon/service.js';
 import { installAgentIntegration, removeAgentIntegration, registration } from './agent/install.js';
 import { stageRuntime } from './daemon/runtime.js';
 import { runMcp } from './agent/mcp.js';
+import { verifyAgentIntegration } from './agent/verify.js';
 const exec = promisify(execFile);
 const command = process.argv[2] || 'help';
+async function agentSetup(codex: string, cli: string) {
+  await installAgentIntegration(codex, cli);
+  console.log(await verifyAgentIntegration(cli));
+}
 async function sessionList() {
   const rpc = new CodexRpc();
   try {
@@ -37,12 +42,7 @@ async function run() {
   }
   if (command === 'install-agent') {
     const config = readConfig();
-    console.log(
-      await installAgentIntegration(
-        config.codexBin,
-        await stageRuntime(fileURLToPath(import.meta.url)),
-      ),
-    );
+    await agentSetup(config.codexBin, await stageRuntime(fileURLToPath(import.meta.url)));
     return;
   }
   if (command === 'voice') {
@@ -84,7 +84,7 @@ async function run() {
       }).auth.test();
       if (auth.team_id !== config.teamId) throw Error('Slack workspace mismatch');
       const cli = await installService(fileURLToPath(import.meta.url));
-      await installAgentIntegration(config.codexBin, cli);
+      await agentSetup(config.codexBin, cli);
       console.log(
         'Pigeon updated. Skill and MCP registered; fresh sessions load global awareness.',
       );
@@ -104,7 +104,7 @@ async function run() {
   if (command === 'install-service') {
     const config = readConfig();
     const cli = await installService(fileURLToPath(import.meta.url));
-    await installAgentIntegration(config.codexBin, cli);
+    await agentSetup(config.codexBin, cli);
     console.log('Pigeon LaunchAgent installed.');
     return;
   }
@@ -161,6 +161,7 @@ async function run() {
       console.log(
         `Pigeon MCP registration: ${(await registration(config.codexBin)) ? 'present' : 'missing — run pigeon install-agent'}`,
       );
+      console.log(await verifyAgentIntegration(fileURLToPath(import.meta.url)));
       try {
         const auth = await new WebClient(await readSecret('bot'), {
           logger: slackLogger,
@@ -291,7 +292,7 @@ async function daemon(pair: boolean) {
       while (!config.userId) await new Promise((r) => setTimeout(r, 250));
       await cleanup();
       const cli = await installService(fileURLToPath(import.meta.url));
-      await installAgentIntegration(config.codexBin, cli);
+      await agentSetup(config.codexBin, cli);
       console.log('Paired. Pigeon will start automatically when you log in.');
       process.exit(0);
     }

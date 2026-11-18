@@ -12,7 +12,7 @@ import { Notifications } from '../../conversation/notifications.js';
 import { classify, selectSession, awaitsConversationalReply } from '../../router.js';
 import { log, failure, slackLogger } from '../../log.js';
 import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { HumanCommunication } from '../../agent/coordinator.js';
 import { serveAgentCalls } from '../../agent/ipc.js';
 const { App, SocketModeReceiver } = bolt;
@@ -58,7 +58,23 @@ export class SlackBridge {
         paired: !!config.userId,
         runtime: this.rpc.connected,
       }),
-      (id) => this.adapter.assertLoaded(id),
+      async (id) => {
+        try {
+          return await this.adapter.assertLoaded(id);
+        } catch {
+          // MCP replies return through the calling runtime, including private exec servers.
+          // Historical metadata is a label only: never resume it or claim live control.
+          try {
+            const { thread } = await this.rpc.call('thread/read', {
+              threadId: id,
+              includeTurns: false,
+            });
+            return { project: basename(thread.cwd) || 'Codex' };
+          } catch {
+            return { project: 'Codex' };
+          }
+        }
+      },
       () => config.dmChannel,
       async (channel, text, id) => {
         const posted = await this.app.client.chat.postMessage({

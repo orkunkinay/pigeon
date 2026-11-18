@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile, rm, rmdir, lstat, rename } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { home } from '../config.js';
@@ -15,6 +16,8 @@ type Receipt = {
   registration: Registration;
   priorRegistration?: Registration;
   priorSkill?: string;
+  launcher?: { path: string; content: string };
+  configSnapshot?: string;
 };
 export type InstallPaths = { userHome: string; codexHome: string; pigeonHome: string };
 const defaults = (): InstallPaths => ({
@@ -57,6 +60,19 @@ function matches(current: any, expected: Registration) {
     JSON.stringify(current.transport.args) === JSON.stringify(expected.args) &&
     JSON.stringify(current.transport.env || {}) === JSON.stringify(expected.env)
   );
+}
+async function serverConfig(paths: InstallPaths) {
+  // Compare, never edit, Codex's own TOML. Include nested Pigeon tables; exclude unrelated sections.
+  const text = await contents(join(paths.codexHome, 'config.toml'));
+  let own = false;
+  return text
+    .split('\n')
+    .filter((line) => {
+      if (/^\s*\[/.test(line)) own = /^\s*\[mcp_servers\.pigeon(?:\]|\.)/.test(line);
+      return own;
+    })
+    .join('\n')
+    .trim();
 }
 /** Codex's CLI edits only its MCP configuration; global prose gets a delimited owned insertion. */
 export async function installAgentIntegration(
@@ -107,9 +123,26 @@ export async function installAgentIntegration(
   }
   const expected: Registration = {
     command: process.execPath,
-    args: [stableCli, 'mcp'],
+    args: [join(paths.pigeonHome, 'agent-mcp.mjs')],
     env: { PIGEON_HOME: paths.pigeonHome },
   };
+  const launcher = {
+    path: expected.args[0],
+    content: `process.argv[2] = 'mcp';\nawait import(${JSON.stringify(pathToFileURL(stableCli).href)});\n`,
+  };
+  await regular(launcher.path);
+  const oldLauncher = await contents(launcher.path);
+  if (oldLauncher && oldLauncher !== previous?.launcher?.content)
+    throw Error('Pigeon MCP launcher was edited; preserving it.');
+  if (
+    current &&
+    !matches(current, expected) &&
+    previous?.configSnapshot &&
+    (await serverConfig(paths)) !== previous.configSnapshot
+  )
+    throw Error(
+      'Pigeon MCP settings were customized; preserving them instead of replacing registration.',
+    );
   // Write the ownership receipt before mutation so interrupted setup remains reversible.
   const receipt: Receipt = {
     skillPath,
@@ -122,10 +155,14 @@ export async function installAgentIntegration(
         ? previous.registration
         : previous?.priorRegistration,
     priorSkill: existingSkill || undefined,
+    launcher,
+    configSnapshot: previous?.configSnapshot,
   };
   await mkdir(paths.pigeonHome, { recursive: true, mode: 0o700 });
   await writeFile(receiptPath + '.tmp', JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
   await rename(receiptPath + '.tmp', receiptPath);
+  await writeFile(launcher.path + '.tmp', launcher.content, { mode: 0o600 });
+  await rename(launcher.path + '.tmp', launcher.path);
   if (previous && previous.instructionPath !== instructionPath) {
     await regular(previous.instructionPath);
     const old = await contents(previous.instructionPath);
@@ -136,23 +173,26 @@ export async function installAgentIntegration(
   await writeFile(skillPath, skill);
   await mkdir(dirname(instructionPath), { recursive: true });
   if (!before.includes(insertion)) await writeFile(instructionPath, before + insertion);
-  await exec(
-    codex,
-    [
-      'mcp',
-      'add',
-      'pigeon',
-      '--env',
-      `PIGEON_HOME=${paths.pigeonHome}`,
-      '--',
-      process.execPath,
-      stableCli,
-      'mcp',
-    ],
-    { env: { ...process.env, CODEX_HOME: paths.codexHome } },
-  );
+  if (!matches(current, expected))
+    await exec(
+      codex,
+      [
+        'mcp',
+        'add',
+        'pigeon',
+        '--env',
+        `PIGEON_HOME=${paths.pigeonHome}`,
+        '--',
+        process.execPath,
+        launcher.path,
+      ],
+      { env: { ...process.env, CODEX_HOME: paths.codexHome } },
+    );
   if (!matches(await registration(codex, paths), expected))
     throw Error('MCP registration verification failed');
+  // Retain the original snapshot if the user customized this registration between installs.
+  if (!matches(current, expected) || !receipt.configSnapshot)
+    receipt.configSnapshot = await serverConfig(paths);
   delete receipt.priorRegistration;
   delete receipt.priorSkill;
   await writeFile(receiptPath + '.tmp', JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
@@ -177,7 +217,9 @@ export async function removeAgentIntegration(codex: string, paths = defaults()) 
     await writeFile(receipt.instructionPath, instructions.replace(receipt.insertion, ''));
   else if (instructions.includes('<!-- pigeon:begin -->')) preserved.push(receipt.instructionPath);
   const current = await registration(codex, paths);
-  if (
+  if (current && receipt.configSnapshot && (await serverConfig(paths)) !== receipt.configSnapshot)
+    preserved.push('customized pigeon MCP configuration');
+  else if (
     matches(current, receipt.registration) ||
     (receipt.priorRegistration && matches(current, receipt.priorRegistration))
   )
@@ -185,6 +227,12 @@ export async function removeAgentIntegration(codex: string, paths = defaults()) 
       env: { ...process.env, CODEX_HOME: paths.codexHome },
     });
   else if (current) preserved.push('pigeon MCP configuration');
+  if (receipt.launcher) {
+    await regular(receipt.launcher.path);
+    if ((await contents(receipt.launcher.path)) === receipt.launcher.content)
+      await rm(receipt.launcher.path, { force: true });
+    else if (await contents(receipt.launcher.path)) preserved.push(receipt.launcher.path);
+  }
   if (!preserved.length) await rm(receiptPath, { force: true });
   return preserved;
 }

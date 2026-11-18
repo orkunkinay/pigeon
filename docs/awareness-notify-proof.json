@@ -1,0 +1,12 @@
+{
+  "date": "2026-11-18T11:16:04.838Z",
+  "mode": "notify",
+  "threadId": "01a1ee5d-638c-7390-97b2-5730d813bbee",
+  "taskDidNotMentionPigeon": true,
+  "automaticSkillRead": true,
+  "mcpAvailabilityVerified": true,
+  "agentInitiatedMessageDelivered": true,
+  "exactSlackMessageReadBack": true,
+  "nativeRuntimeForwardingUsed": false,
+  "testPermission": "Only named Pigeon communication tools preauthorized for this invocation; no global approval policy changed."
+}

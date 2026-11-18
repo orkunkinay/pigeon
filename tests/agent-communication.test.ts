@@ -7,6 +7,8 @@ import { Store } from '../src/store.js';
 import { Voice } from '../src/conversation/voice.js';
 import { HumanCommunication } from '../src/agent/coordinator.js';
 import { serveAgentCalls, companionCall } from '../src/agent/ipc.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 const signal = () => new AbortController().signal;
 function fixture(store = new Store(':memory:'), quiet = false, failed = false) {
   const sent: any[] = [];
@@ -215,6 +217,52 @@ test('real Unix socket has private permissions and needs no transport credential
     assert.equal(result.voice.voice, 'colleague');
     await assert.rejects(companionCall({ name: 'unknown' }, signal(), path), /Unknown/);
   } finally {
+    await stop();
+    store.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('real MCP stdio discovery forwards runtime metadata and returns correlated structured replies', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'pigeon-mcp-'));
+  const { human, store, sent } = fixture();
+  const stop = await serveAgentCalls(
+    (call, signal) => human.call(call, signal),
+    join(dir, 'companion.sock'),
+  );
+  const client = new Client({ name: 'pigeon-contract-test', version: '1' });
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: ['--import', 'tsx', 'src/cli.ts', 'mcp'],
+    env: { PATH: process.env.PATH!, PIGEON_HOME: dir },
+    stderr: 'ignore',
+  });
+  try {
+    await client.connect(transport);
+    assert.equal((await client.listTools()).tools.length, 4);
+    const denied = await client.callTool({
+      name: 'pigeon_notify_human',
+      arguments: { message: 'No attribution' },
+    });
+    assert.equal(denied.isError, true);
+    assert.equal(sent.length, 0);
+    const request = await client.callTool({
+      name: 'pigeon_ask_human',
+      arguments: { message: 'Amber or teal?', wait_seconds: 0 },
+      _meta: { threadId: 'one', itemId: 'original-call' },
+    });
+    const result = request.structuredContent as any;
+    assert.equal(result.status, 'pending');
+    assert.equal(result.session_id, 'one');
+    human.answer('D-human', 'root-1', 'teal');
+    const reply = await client.callTool({
+      name: 'pigeon_ask_human',
+      arguments: { request_id: result.request_id },
+      _meta: { threadId: 'one' },
+    });
+    assert.equal((reply.structuredContent as any).reply, 'teal');
+  } finally {
+    await client.close();
     await stop();
     store.close();
     await rm(dir, { recursive: true, force: true });

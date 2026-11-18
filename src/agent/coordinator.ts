@@ -108,7 +108,7 @@ export class HumanCommunication {
     const state = this.availability();
     if (call.name === 'pigeon_get_status')
       return {
-        available: state.connected && state.paired && state.runtime,
+        available: state.connected && state.paired,
         companion: true,
         human_paired: state.paired,
         transport_connected: state.connected,
@@ -145,7 +145,7 @@ export class HumanCommunication {
       if (!row || row.session !== call.session || row.tool !== call.name)
         throw Error('Request is unavailable in this session');
     } else {
-      if (!state.connected || !state.paired || !state.runtime)
+      if (!state.connected || !state.paired)
         throw Error('Human communication is offline; no message was sent');
       if (typeof a.message !== 'string' || !a.message.trim() || a.message.length > 3000)
         throw Error('A nonempty message of at most 3000 characters is required');
