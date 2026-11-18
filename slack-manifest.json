@@ -1,0 +1,6 @@
+{
+  "display_information": {"name":"Pigeon","description":"Your coding agent is one message away.","background_color":"#26443b"},
+  "features":{"bot_user":{"display_name":"Pigeon","always_online":false},"app_home":{"home_tab_enabled":false,"messages_tab_enabled":true,"messages_tab_read_only_enabled":false}},
+  "oauth_config":{"scopes":{"bot":["chat:write","im:history","im:write"]}},
+  "settings":{"socket_mode_enabled":true,"interactivity":{"is_enabled":true},"event_subscriptions":{"bot_events":["message.im"]},"org_deploy_enabled":false}
+}
