@@ -26,7 +26,7 @@
 <li>Approvals: a single displayable command with no additional permission bundle.</li>
 <li>Reconnect catch-up covers the latest turn only.</li>
 <li>Multiple sessions work with separate threads. No stress-scale result.</li>
-<li>The agent-side MCP tools and skill: implemented, with local tests and a verifier. Treat as new.</li>
+<li>The agent-side MCP tools and skill: a fresh Codex session independently read the skill and sent a real Slack message (<code>docs/awareness-notify-proof.json</code>). They also work from private runtimes such as <code>codex exec</code>; steering does not.</li>
 </ul>
 <h2 id="experimental">Experimental<a class="anchor" href="#experimental" aria-label="Link to this section">#</a></h2>
 <ul><li>The Codex daemon protocol itself and cross-version behaviour.</li><li>Recovery after a Codex daemon restart.</li><li>Mac sleep and network loss.</li><li>The dedicated Codex desktop app and IDE extensions beyond the observed case.</li></ul>

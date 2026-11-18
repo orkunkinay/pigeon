@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pigeon · Your coding agent is one message away</title>
+<meta name="description" content="Pigeon connects your running Codex sessions to Slack. Ask what the agent is doing, steer it, approve a command, and answer its questions without returning to your computer.">
+<meta property="og:title" content="Pigeon · Your coding agent is one message away">
+<meta property="og:description" content="Local-first Slack bridge for Codex sessions. Open source, macOS preview.">
+<link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/styles/site.css">
+<style>
+.dark-band{position:relative;overflow:hidden;background:#04120d;color:#e6efe9;border:0}
+.dark-band img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:75% 50%;opacity:.9}
+.dark-band .wrap{position:relative}
+.dark-band a.btn{color:#e6efe9;border-color:#e6efe9}
+.dark-band a.btn.primary{background:#2fd08e;border-color:#2fd08e;color:#04140d}
+.dark-band .lede{color:#b7cbc1}
+.strip{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
+.strip .box ul{margin:8px 0 0;padding-left:18px;font-size:15px;color:var(--ink2)}
+.five{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:30px}
+.five .box{padding:16px}.five h3{font-size:20px}
+@media(max-width:960px){.five{grid-template-columns:repeat(2,1fr)}.strip{grid-template-columns:1fr}}
+@media(max-width:520px){.five{grid-template-columns:1fr}}
+.qs{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start;margin-top:26px}
+@media(max-width:860px){.qs{grid-template-columns:1fr}}
+.qs ol{padding-left:20px;margin:0}.qs li{margin-bottom:10px}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="brand" href="index.html"><img src="assets/images/pigeon-mark.svg" alt="">Pigeon</a>
+  <nav aria-label="Primary">
+    <a href="#demo" class="hide-s">Demo</a><a href="#how" class="hide-s">How it works</a><a href="#quickstart">Install</a>
+    <a href="docs/index.html">Docs</a><a href="https://github.com/Murat-Barkin-Kinay/pigeon" class="hide-s">GitHub</a>
+    <button class="themebtn" data-theme-toggle type="button" aria-label="Toggle dark mode">◐</button>
+  </nav>
+</div></header>
+
+<main id="main">
+<section class="hero">
+<div class="wrap">
+  <p class="eyebrow">Open source · macOS preview · works with Codex</p>
+  <h1>Your coding agent is <em>one message away.</em></h1>
+  <p class="lede">Open Codex normally. Leave your computer. Stay connected through Slack. Ask what it is doing, change its priorities, approve a command, and answer when it needs you.</p>
+  <div class="cta">
+    <a class="btn primary" href="#quickstart">Install Pigeon</a>
+    <a class="btn" href="#demo">Try the demo</a>
+    <a class="btn" href="https://github.com/Murat-Barkin-Kinay/pigeon">GitHub</a>
+  </div>
+  <p class="note">Preview software. Not yet on npm; install from source in about ten minutes. <a href="docs/status.html">What is verified and what is not.</a></p>
+
+  <div class="scene" aria-label="Illustration: a Codex session on your computer and the same session in a Slack conversation">
+    <div class="win">
+      <div class="bar"><i></i><i></i><i></i><b>Your Mac · codex · agentlane</b></div>
+<pre class="term" style="margin:0" aria-label="Codex terminal output"><span class="step" style="animation-delay:.1s"><span class="g">●</span> Running benchmark: browser startup</span><span class="step" style="animation-delay:.6s"><span class="g">✓</span> 18 passed <span class="r">2 failed</span></span><span class="step" style="animation-delay:1.1s"><span class="g">●</span> Editing browser/reconnect.ts</span><span class="step" style="animation-delay:1.6s"><span class="y">!</span> Microsoft sign-in needs approval</span><span class="step" style="animation-delay:1.9s"><span class="d">  → pigeon_request_human_action</span></span><span class="step" style="animation-delay:2.2s"><span class="d">  waiting for human…</span></span><span class="step" style="animation-delay:3.9s"><span class="g">✓</span> reply received, verifying sign-in</span><span class="step" style="animation-delay:4.4s"><span class="g">●</span> Back to the tests</span></pre>
+    </div>
+    <div class="link" aria-hidden="true">
+      <svg viewBox="0 0 64 60"><path class="dash" d="M2 30H62" stroke="currentColor" stroke-width="2.5" fill="none"/><circle cx="32" cy="30" r="5" fill="currentColor"/></svg>
+      same<br>session
+    </div>
+    <div class="win">
+      <div class="slack">
+        <div class="bar"><i></i><i></i><i></i><b>Slack · Pigeon · away from your desk</b></div>
+        <div class="msg step" style="animation-delay:2.4s"><div class="av"><img src="assets/images/pigeon-mark.svg" alt=""></div><div><b>Pigeon</b><small>2:14 PM</small><p>Quick one — Microsoft is asking for number 88. Can you approve that?</p></div></div>
+        <div class="msg step" style="animation-delay:3.2s"><div class="av me">You</div><div><b>You</b><small>2:14 PM</small><p>Done.</p></div></div>
+        <div class="msg step" style="animation-delay:4.2s"><div class="av"><img src="assets/images/pigeon-mark.svg" alt=""></div><div><b>Pigeon</b><small>2:15 PM</small><p>Passed that back to Codex on agentlane.</p></div></div>
+        <div class="msg step" style="animation-delay:5.2s"><div class="av me">You</div><div><b>You</b><small>2:19 PM</small><p>What are you doing?</p></div></div>
+        <div class="msg step" style="animation-delay:6s"><div class="av"><img src="assets/images/pigeon-mark.svg" alt=""></div><div><b>Pigeon</b><small>2:19 PM</small><p>Codex is working on agentlane.<br>Last update from Codex: “Benchmarking latency. Browser startup looks like the main bottleneck.”</p></div></div>
+      </div>
+    </div>
+  </div>
+  <p class="cap"><strong>Illustration, not a screenshot.</strong> It is composed from Pigeon's real message wording and the real flow, which was verified against a live Codex session and a real Slack workspace. <a href="docs/status.html">Evidence</a>.</p>
+</div>
+</section>
+
+<section id="problem">
+<div class="wrap">
+  <p class="eyebrow">The problem</p>
+  <h2>Agents can work for hours. Then they need you.</h2>
+  <p class="sub">A sign-in to approve. A decision only you can make. A command waiting for permission. If you are not at your computer, the agent just stops.</p>
+  <div class="cmp">
+    <div class="lane bad"><h3>Without Pigeon <span class="pill no">stalled</span></h3>
+      <ol>
+        <li><i>1</i>Agent hits a blocker<span>Authenticator number, permission, a question</span></li>
+        <li class="stop"><i>✕</i>Agent waits at the terminal<span>Nobody is there</span></li>
+        <li class="stop"><i>✕</i>You are away<span>You find out hours later</span></li>
+        <li class="stop"><i>✕</i>Work stays unfinished</li>
+      </ol></div>
+    <div class="lane good"><h3>With Pigeon <span class="pill ok">continues</span></h3>
+      <ol>
+        <li><i>1</i>Agent hits a blocker<span>Same blocker</span></li>
+        <li><i>2</i>Pigeon messages you in Slack<span>“Quick one — Microsoft is asking for number 88.”</span></li>
+        <li><i>3</i>You reply from your phone<span>“Done.”</span></li>
+        <li><i>4</i>Agent verifies and continues<span>Same session, same context</span></li>
+      </ol></div>
+  </div>
+</div>
+</section>
+
+<section id="demo">
+<div class="wrap">
+  <p class="eyebrow">Interactive demo</p>
+  <h2>See how each message is handled.</h2>
+  <p class="sub">Pick a scenario. The left shows Slack. The right shows what Pigeon does with the message. <strong>This is an interactive illustration with scripted data. It is not connected to Slack or Codex.</strong> The wording and routing follow the real implementation.</p>
+  <div class="demo">
+    <div class="scn" id="scn" role="tablist" aria-label="Scenarios" aria-orientation="vertical"></div>
+    <div class="stage">
+      <div class="slack" id="chat" role="tabpanel" aria-live="polite" aria-label="Simulated Slack conversation"></div>
+      <div class="route-panel"><h4>What Pigeon does</h4><ol class="hops" id="hops" style="padding-left:0"></ol><p class="real" id="real"></p>
+        <div class="demo-ctl"><button class="btn" id="replay" type="button">↻ Replay</button></div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="how">
+<div class="wrap">
+  <p class="eyebrow">How it works</p>
+  <h2>Ask the status. Direct the session. Approve with a button.</h2>
+  <p class="sub">Pigeon does not hand every Slack message to the agent as if it were the same kind of thing. Small, predictable rules decide where each message goes. No model guesses your intent.</p>
+  <div class="routes">
+    <div class="route"><div class="a">“What are you doing?”<small>a recognised status phrase</small></div><div class="arr" aria-hidden="true">→</div><div class="b"><b>Answered from observed state</b><span>Reads what Codex already did. Creates no turn, interrupts nothing.</span></div></div>
+    <div class="route"><div class="a">“Focus on latency first.”<small>any other message</small></div><div class="arr" aria-hidden="true">→</div><div class="b"><b>Sent to your original session</b><span>Steers the active turn, or starts the next one if idle.</span></div></div>
+    <div class="route"><div class="a">Codex asks to run a command<small>request from Codex</small></div><div class="arr" aria-hidden="true">→</div><div class="b"><b>Approve once / Deny</b><span>A one-use button bound to that request. Typing “yes” never approves.</span></div></div>
+  </div>
+  <div class="callout warn"><p><strong>Honest gap.</strong> Pigeon does not yet fork a session to discuss work without touching it, and it cannot resume a stopped conversation. A free-form question goes to the working session like any instruction. <span class="pill no">Not built</span> See <a href="docs/routing.html">the exact routing rules</a>.</p></div>
+  <h3 style="margin-top:44px">Same session, not a chatbot</h3>
+  <p class="sub">Pigeon joins the Codex session that is already running, through the shared local daemon Codex itself provides. It does not start a replacement model or read your terminal. In a live test the original worker recalled a marker from its first task, one injected mid-turn, and one sent from Slack. <a href="docs/codex-integration.html">How it finds your sessions</a>.</p>
+  <div class="five">
+    <div class="box"><h3>Ask</h3><p><span class="pill ok">Verified</span><br>Status without disturbing the turn.</p></div>
+    <div class="box"><h3>Direct</h3><p><span class="pill ok">Verified</span><br>Steer an active turn by ID.</p></div>
+    <div class="box"><h3>Approve</h3><p><span class="pill ok">Verified</span><br>One-time command approval.</p></div>
+    <div class="box"><h3>Answer</h3><p><span class="pill ok">Verified</span><br>Replies to the agent's questions.</p></div>
+    <div class="box"><h3>Resume</h3><p><span class="pill no">Not built</span><br>Only live sessions today.</p></div>
+  </div>
+</div>
+</section>
+
+<section id="quickstart">
+<div class="wrap">
+  <p class="eyebrow">Quick start</p>
+  <h2>Install from source, connect Slack once.</h2>
+  <p class="sub">macOS, Node.js 24+, Codex signed in, and permission to install a custom Slack app.</p>
+  <div class="qs">
+    <div>
+<div class="code"><pre><code>$ git clone https://github.com/Murat-Barkin-Kinay/pigeon.git
+$ cd pigeon
+$ npm ci
+$ npm run build
+$ node dist/cli.js setup</code></pre></div>
+<p class="note">Clone URL applies once the repository is public. In an existing checkout, start at <code>npm ci</code>.</p>
+    </div>
+    <div>
+      <ol>
+        <li><strong>Create the Slack app from a manifest.</strong> It sets every scope and event for you.</li>
+        <li><strong>Copy two tokens</strong> into the local page. They go to macOS Keychain.</li>
+        <li><strong>Pair</strong> by DMing the one-time phrase to Pigeon.</li>
+        <li>Open Codex, DM <code>sessions</code>, press <b>Connect</b>, and say hello.</li>
+      </ol>
+      <p><a class="btn primary" href="docs/slack-setup.html">Follow the Slack setup guide</a></p>
+      <p class="note">The npm name <code>pigeon</code> is a different project. Do not use <code>npx pigeon</code>.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="architecture">
+<div class="wrap">
+  <p class="eyebrow">Architecture</p>
+  <h2>A small local service between Slack and Codex.</h2>
+  <p class="sub">Select any part to see what it does and where it lives in the source. The dashed outline marks something that does not exist yet.</p>
+  <div class="arch-wrap">
+  <figure class="fig" style="margin:0"><svg viewBox="0 0 900 430" role="group" aria-label="Interactive architecture diagram">
+    <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="var(--green)"/></marker></defs>
+    <text class="lbl-s" x="10" y="16">YOUR SLACK</text><text class="lbl-s" x="190" y="16">PIGEON COMPANION (LOCAL, LAUNCHAGENT)</text><text class="lbl-s" x="740" y="16">CODEX</text>
+    <rect x="180" y="24" width="540" height="396" rx="12" fill="none" stroke="var(--line)" stroke-dasharray="3 5"/>
+    <g class="node ext" data-k="slack" tabindex="0" role="button"><rect x="10" y="60" width="140" height="56" rx="8"/><text x="26" y="86">Slack DM</text><text class="s" x="26" y="104">Socket Mode</text></g>
+    <g class="node" data-k="ingress" tabindex="0" role="button"><rect x="200" y="60" width="150" height="56" rx="8"/><text x="216" y="86">Ingress</text><text class="s" x="216" y="104">paired user only</text></g>
+    <g class="node" data-k="store" tabindex="0" role="button"><rect x="380" y="60" width="150" height="56" rx="8"/><text x="396" y="86">SQLite</text><text class="s" x="396" y="104">inbox · outbox</text></g>
+    <g class="node" data-k="router" tabindex="0" role="button"><rect x="560" y="60" width="140" height="56" rx="8"/><text x="576" y="86">Intent router</text><text class="s" x="576" y="104">classify · select</text></g>
+    <g class="node" data-k="adapter" tabindex="0" role="button"><rect x="560" y="170" width="140" height="56" rx="8"/><text x="576" y="196">Codex adapter</text><text class="s" x="576" y="214">steer · read</text></g>
+    <g class="node ext" data-k="daemon" tabindex="0" role="button"><rect x="750" y="170" width="140" height="56" rx="8"/><text x="766" y="196">Shared daemon</text><text class="s" x="766" y="214">your sessions</text></g>
+    <g class="node" data-k="approvals" tabindex="0" role="button"><rect x="380" y="170" width="150" height="56" rx="8"/><text x="396" y="196">Approvals</text><text class="s" x="396" y="214">one-use buttons</text></g>
+    <g class="node" data-k="notify" tabindex="0" role="button"><rect x="200" y="170" width="150" height="56" rx="8"/><text x="216" y="196">Notifications</text><text class="s" x="216" y="214">what pings you</text></g>
+    <g class="node" data-k="coord" tabindex="0" role="button"><rect x="380" y="290" width="150" height="56" rx="8"/><text x="396" y="316">Human comms</text><text class="s" x="396" y="334">companion.sock</text></g>
+    <g class="node ext" data-k="mcp" tabindex="0" role="button"><rect x="560" y="290" width="140" height="56" rx="8"/><text x="576" y="316">Pigeon MCP</text><text class="s" x="576" y="334">4 tools · stdio</text></g>
+    <g class="node ext" data-k="skill" tabindex="0" role="button"><rect x="750" y="290" width="140" height="56" rx="8"/><text x="766" y="316">Pigeon skill</text><text class="s" x="766" y="334">SKILL.md</text></g>
+    <g class="node gone" data-k="fork" tabindex="0" role="button"><rect x="200" y="290" width="150" height="56" rx="8"/><text x="216" y="316">Conversation fork</text><text class="s" x="216" y="334">not built</text></g>
+    <path class="edge" marker-end="url(#ar)" d="M150 88H198"/><path class="edge" marker-end="url(#ar)" d="M350 88H378"/><path class="edge" marker-end="url(#ar)" d="M530 88H558"/>
+    <path class="edge" marker-end="url(#ar)" d="M630 116V168"/><path class="edge" marker-end="url(#ar)" d="M700 198H748"/>
+    <path class="edge" marker-end="url(#ar)" d="M750 214H702"/><path class="edge" d="M780 226V250H455V228" marker-end="url(#ar)"/>
+    <path class="edge" marker-end="url(#ar)" d="M380 198H352"/>
+    <path class="edge" marker-end="url(#ar)" d="M820 290V232" stroke-dasharray="4 4"/>
+    <path class="edge" marker-end="url(#ar)" d="M560 318H532"/><path class="edge" marker-end="url(#ar)" d="M750 318H702"/>
+    <path class="edge" d="M275 170V140H125V118" marker-end="url(#ar)"/>
+    <text class="lbl-s" x="120" y="160">replies, buttons</text>
+  </svg>
+  <figcaption>Dashed outlines are things outside Pigeon. Keyboard: Tab to a part, Enter to read it.</figcaption></figure>
+  <aside class="arch-detail" id="arch-detail" aria-live="polite"><h4>Select a part</h4><p>Everything above runs on your Mac. Only Slack's servers are remote, and Pigeon connects outward to them.</p></aside>
+  </div>
+  <p style="margin-top:22px"><a class="btn" href="docs/architecture.html">Read the architecture notes</a></p>
+</div>
+</section>
+
+<section id="trust">
+<div class="wrap">
+  <p class="eyebrow">Open source, local first</p>
+  <h2>No cloud. No tunnel. No second model.</h2>
+  <div class="strip">
+    <div class="box"><h3>Runs on your Mac</h3><p>A LaunchAgent, SQLite, and Slack Socket Mode. Nothing to host, no public URL, no signing secret.</p></div>
+    <div class="box"><h3>Locked to you</h3><p>Pairing with a phrase only your terminal shows. Only your DMs are accepted. Tokens live in Keychain.</p></div>
+    <div class="box"><h3>Approvals stay honest</h3><p>One-use buttons, ten-minute expiry, never automatic. Codex's own policy still applies. <a href="docs/security.html">Security model</a>.</p></div>
+  </div>
+  <h3 style="margin-top:44px">What is real, and what is not</h3>
+  <div class="strip">
+    <div class="box"><span class="pill ok">Verified</span><ul><li>Attach to a live session</li><li>Slack round trip</li><li>Steer and interrupt</li><li>Command approval</li><li>Agent-initiated messages</li></ul></div>
+    <div class="box"><span class="pill exp">Experimental</span><ul><li>Codex daemon restarts</li><li>Sleep and network loss</li><li>Codex desktop app</li><li>Other Codex versions</li></ul></div>
+    <div class="box"><span class="pill no">Not built</span><ul><li>Conversational fork</li><li>Resuming stopped sessions</li><li>Windows and Linux</li><li>File-change approvals from Slack</li></ul></div>
+  </div>
+  <p class="note" style="margin-top:14px">Evidence date 2026-11-18: macOS 15.5, Node 24.18, Codex CLI 0.169.0. MIT licensed. Codex's own usage remains your responsibility.</p>
+</div>
+</section>
+
+<section class="dark-band">
+<img class="bg" src="assets/images/pigeon-glow.jpg" alt="" loading="lazy" width="1200" height="800">
+<div class="wrap" style="padding-top:110px;padding-bottom:110px">
+  <p class="eyebrow" style="color:#2fd08e">Give it a try</p>
+  <h2>Leave the desk. Keep the thread.</h2>
+  <p class="lede">Ten minutes to set up. One Slack app. Your agent, one message away.</p>
+  <div class="cta"><a class="btn primary" href="docs/getting-started.html">Get started</a><a class="btn" href="https://github.com/Murat-Barkin-Kinay/pigeon">View the source</a><a class="btn" href="docs/index.html">Read the docs</a></div>
+</div>
+</section>
+</main>
+<footer><div class="wrap"><span>Pigeon · MIT licensed · preview software for macOS</span><span><a href="docs/index.html">Docs</a> · <a href="docs/troubleshooting.html">Troubleshooting</a> · <a href="docs/security.html">Security</a> · <a href="https://github.com/Murat-Barkin-Kinay/pigeon">GitHub</a></span></div></footer>
+<script src="assets/scripts/site.js"></script>
+<script src="assets/scripts/home.js"></script>
+</body>
+</html>

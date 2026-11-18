@@ -27,7 +27,7 @@ $ node dist/cli.js sessions           # JSON list of live, controllable sessions
 <h2 id="mcp-tools-and-the-skill">MCP tools and the skill<a class="anchor" href="#mcp-tools-and-the-skill" aria-label="Link to this section">#</a></h2>
 <p><code>setup</code> (and <code>install-agent</code>) gives the agent a way to reach you on its own initiative. All of it is reversible and tracked by a receipt in Pigeon's home directory.</p>
 <div class="tablewrap"><table><thead><tr><th>What</th><th>Where</th></tr></thead><tbody>
-<tr><td>MCP server <code>pigeon</code></td><td>Registered with <code>codex mcp add</code>, running <code>pigeon mcp</code> over stdio.</td></tr>
+<tr><td>MCP server <code>pigeon</code></td><td>Registered with <code>codex mcp add</code>. A locally owned launcher runs <code>pigeon mcp</code> from Pigeon's immutable installed runtime.</td></tr>
 <tr><td>Skill</td><td><code>~/.agents/skills/pigeon/SKILL.md</code></td></tr>
 <tr><td>Awareness block</td><td>A <code>&lt;!-- pigeon:begin --&gt;</code> … <code>&lt;!-- pigeon:end --&gt;</code> section in <code>AGENTS.md</code> (or <code>AGENTS.override.md</code> if that exists) under <code>CODEX_HOME</code>.</td></tr>
 </tbody></table></div>
@@ -39,6 +39,8 @@ $ node dist/cli.js sessions           # JSON list of live, controllable sessions
 <tr><td><code>pigeon_ask_human</code></td><td>Ask a question and wait for the correlated reply. Pending requests survive; reuse <code>request_id</code>.</td></tr>
 <tr><td><code>pigeon_request_human_action</code></td><td>Ask for an outside action, such as approving a Microsoft Authenticator number. The reply is a human report, not proof; the agent must verify.</td></tr>
 </tbody></table></div>
+<div class="callout warn"><p><strong>Codex's own tool consent still applies.</strong> The first use of a sending tool may need local approval, and a non-interactive session with approval policy <code>never</code> can reject a send. Pigeon reports the rejection instead of claiming delivery. Authorize the communication tools in Codex before you walk away.</p></div>
+<p>The tools also work from private Codex runtimes such as <code>codex exec</code>: the answer returns to that process's waiting call. Independent Slack steering and native approval forwarding still require a session loaded in the shared daemon.</p>
 <p>These tools cannot grant permissions, replace approval buttons, or collect passwords, OTPs, recovery codes, or tokens. Each call is tied to the Codex thread ID that Codex supplies, never inferred from the working directory.</p>
 <div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ node dist/cli.js doctor        # reports skill discovery and MCP tool verification
 $ node dist/cli.js install-agent # repair or re-install skill + MCP</code></pre></div>

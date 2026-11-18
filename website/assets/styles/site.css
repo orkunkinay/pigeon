@@ -223,3 +223,5 @@ dialog.lb .in svg,dialog.lb .in img{width:100%;min-width:760px}
 dialog.lb button{position:sticky;top:0;float:right;margin-bottom:8px}
 .k{display:inline-block;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 6px;font:12px var(--mono);background:var(--card)}
 .ss text{font-family:var(--sans)}
+.term .step{display:block;opacity:0;animation:in .45s forwards;white-space:pre-wrap}
+.code code{background:none;padding:0}

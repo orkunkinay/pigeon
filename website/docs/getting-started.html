@@ -44,7 +44,7 @@ $ node dist/cli.js setup</code></pre></div>
 <p><code>doctor</code> reports Slack pairing, Keychain items, the background service, the Codex runtime and live session count, skill discovery, MCP tool verification, and whether the Slack Socket Mode credential is still valid. If something is wrong, see <a href="troubleshooting.html">Troubleshooting</a>.</p>
 <h2 id="uninstall">Uninstall<a class="anchor" href="#uninstall" aria-label="Link to this section">#</a></h2>
 <div class="code"><span class="pill ok lbl" style="background:var(--card)">terminal</span><pre><code>$ node dist/cli.js uninstall</code></pre></div>
-<p>Removes the LaunchAgent, local runtime and state, and the two Keychain items. It does not delete the Slack app (remove that in Slack) or touch Codex settings or history.</p>
+<p>Removes the LaunchAgent, local runtime and state, the two Keychain items, and the skill, MCP registration and instruction paragraph Pigeon added (files you modified are preserved and reported). It does not delete the Slack app (remove that in Slack) or touch other Codex settings or history.</p>
 
 <nav class="pn" aria-label="Previous and next"><a href="index.html"><small>← Previous</small>Overview</a><a class="next" href="slack-setup.html"><small>Next →</small>Slack setup</a></nav></main></div>
 <footer><div class="wrap"><span>Pigeon is MIT licensed. Preview software, macOS only.</span><a href="https://github.com/Murat-Barkin-Kinay/pigeon">Source on GitHub</a></div></footer>
