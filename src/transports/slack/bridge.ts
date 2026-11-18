@@ -10,7 +10,11 @@ import { Approvals } from '../../approvals.js';
 import { Voice } from '../../conversation/voice.js';
 import { statusReply } from '../../conversation/status.js';
 import { Notifications } from '../../conversation/notifications.js';
-import { classify, selectSession, awaitsConversationalReply } from '../../router.js';
+import { classify } from '../../router.js';
+import { Observation } from '../../core/observation.js';
+import { Discussions } from '../../core/discussions.js';
+import { SessionRecovery } from '../../core/recovery.js';
+import { MainController } from '../../core/controller.js';
 import { log, failure, slackLogger } from '../../log.js';
 import { writeFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
@@ -41,6 +45,10 @@ export class SlackBridge {
   private nextPruneAt = 0;
   private nextEnsureAt = 0;
   readonly human: HumanCommunication;
+  readonly observation: Observation;
+  readonly discussions: Discussions;
+  readonly recovery: SessionRecovery;
+  readonly controller: MainController;
   private stopAgentCalls?: () => Promise<void>;
   constructor(
     readonly config: Config,
@@ -51,6 +59,12 @@ export class SlackBridge {
     private ensureRuntime?: () => Promise<void>,
   ) {
     this.voice = new Voice(config.personality);
+    this.observation = new Observation(store, this.adapter);
+    this.discussions = new Discussions(store, this.rpc, this.observation, () => this.voice);
+    this.recovery = new SessionRecovery(this.adapter, (id) => this.discussions.owns(id));
+    this.controller = new MainController(store, this.adapter, this.recovery, (id) =>
+      this.discussions.owns(id),
+    );
     const humanClient = new WebClient(botToken, {
       logger: slackLogger,
       timeout: 10000,
@@ -149,8 +163,9 @@ export class SlackBridge {
       const id = action.value;
       if (typeof id !== 'string') return;
       try {
-        const selected = await this.adapter.assertLoaded(id);
-        await this.adapter.attach(id);
+        const selected = (await this.recovery.sessions()).find((s) => s.id === id);
+        if (!selected) throw Error('Session unavailable');
+        if (selected.status !== 'saved') await this.adapter.attach(id);
         store.bind(body.channel.id, root, id);
         store.post(
           randomUUID(),
@@ -180,10 +195,13 @@ export class SlackBridge {
       }
     });
     this.rpc.on('notification', (m) => this.schedule(() => this.notification(m)));
-    this.rpc.on('request', (m) => this.approvals.receive(m));
+    this.rpc.on('request', (m) => {
+      if (!this.discussions.handle(m)) this.approvals.receive(m);
+    });
     this.rpc.on('disconnected', () => {
       this.subscribed.clear();
       this.approvals.disconnect();
+      this.discussions.disconnect();
       log('codex_disconnected');
     });
   }
@@ -192,6 +210,9 @@ export class SlackBridge {
   }
   private async notification(m: RpcMessage) {
     const p = m.params;
+    if (this.discussions.handle(m)) return;
+    this.observation.record(m);
+    this.controller.observe(m);
     if (m.method === 'serverRequest/resolved') {
       this.approvals.resolved(p.requestId);
       return;
@@ -201,7 +222,16 @@ export class SlackBridge {
 
   async start() {
     await this.app.start();
-    this.stopAgentCalls = await serveAgentCalls((call, signal) => this.human.call(call, signal));
+    this.stopAgentCalls = await serveAgentCalls(async (call, signal) => {
+      if (call.session && this.discussions.owns(call.session))
+        throw Error('Conversational branches cannot send human requests or control main.');
+      if (call.name === 'pigeon_list_sessions')
+        return {
+          current_session_id: call.session || null,
+          sessions: await this.recovery.sessions(),
+        };
+      return this.human.call(call, signal);
+    });
     this.running = true;
     log('slack_connected');
     this.timer = setInterval(() => void this.tick().catch(() => failure('bridge_tick')), 1000);
@@ -210,6 +240,7 @@ export class SlackBridge {
   async stop() {
     this.running = false;
     await this.stopAgentCalls?.();
+    await this.discussions.close();
     if (this.timer) clearInterval(this.timer);
     while (this.busy) await new Promise((r) => setTimeout(r, 25));
     await this.serial;
@@ -217,7 +248,7 @@ export class SlackBridge {
     await this.app.stop();
   }
   private async choose(channel: string, root: string) {
-    const sessions = await this.adapter.sessions();
+    const sessions = await this.recovery.sessions();
     const blocks: any[] = [
       {
         type: 'section',
@@ -258,15 +289,15 @@ export class SlackBridge {
       return;
     }
     if (
-      (intent === 'instruction' || intent === 'ambiguous') &&
+      !['interrupt', 'status', 'sessions', 'resume'].includes(intent) &&
       this.approvals.answer(channel, root, text)
     ) {
       this.store.post(`reply:${id}`, channel, root, this.voice.say('answerSent'));
       return;
     }
     const bound = this.store.binding(channel, root);
-    const sessions = await this.adapter.sessions();
-    const session = selectSession(sessions, bound);
+    const sessions = await this.recovery.sessions();
+    const session = this.recovery.select(sessions, text, bound);
     if (!session) {
       if (bound) this.store.post(`stale:${id}`, channel, root, this.voice.say('stale'));
       else await this.choose(channel, root);
@@ -276,7 +307,7 @@ export class SlackBridge {
     if (intent === 'status') {
       const answer = statusReply(
         session,
-        await this.adapter.snapshot(session.id),
+        await this.observation.snapshot(session),
         text,
         this.voice,
       );
@@ -286,22 +317,24 @@ export class SlackBridge {
         return;
       }
     }
-    const pendingNative = this.store.db
-      .prepare(
-        "SELECT token FROM approvals WHERE channel=? AND root=? AND status='pending' AND expires>? LIMIT 1",
-      )
-      .get(channel, root, Date.now());
+    const proposal = this.discussions.proposal(channel, root, session.id);
     if (
       intent === 'ambiguous' &&
-      (!bound ||
-        pendingNative ||
-        !awaitsConversationalReply(await this.adapter.snapshot(session.id)))
+      (!proposal ||
+        !/^(?:yes|ok(?:ay)?|go ahead|do it|let's do it|lets do it)(?:[, ]+(?:let's do it|lets do it|do it|go ahead))?[.!]?$/i.test(
+          text.trim(),
+        ))
     ) {
       this.store.post(`ambiguous:${id}`, channel, root, this.voice.say('ambiguous'));
       return;
     }
+    if (intent === 'discuss' || intent === 'status') {
+      this.discussions.enqueue(row, session);
+      log('route_discuss');
+      return;
+    }
     if (intent === 'watch') {
-      const snapshot = await this.adapter.snapshot(session.id);
+      const snapshot = await this.observation.snapshot(session);
       if (snapshot.status.type !== 'active') {
         this.store.post(
           `watch:${id}`,
@@ -329,7 +362,7 @@ export class SlackBridge {
       return;
     }
     if (intent === 'interrupt') {
-      await this.adapter.interrupt(session.id);
+      await this.controller.send(row, session, 'interrupt', text);
       this.store.post(
         `interrupt:${id}`,
         channel,
@@ -338,15 +371,49 @@ export class SlackBridge {
       );
       return;
     }
-    const input = this.voice.runtimeInput(text, this.store.conversation(channel, root, session.id));
-    const delivery = await this.adapter.deliver(session.id, input, `pigeon:${id}`);
+    const previous = this.store.conversation(channel, root, session.id);
+    if (/\b(that|those|it|them)\b/i.test(text) && !proposal && !previous) {
+      this.store.post(
+        `clarify:${id}`,
+        channel,
+        root,
+        'What should I ask Codex to act on? I don’t have the discussion context for that yet.',
+      );
+      return;
+    }
+    if (session.status === 'saved' && intent !== 'resume') {
+      this.store.post(
+        `stopped:${id}`,
+        channel,
+        root,
+        'That session is saved but isn’t running. Say “continue” to resume its work.',
+      );
+      return;
+    }
+    const handoff =
+      text +
+      (proposal
+        ? `\nThe human-visible proposed instruction was: ${proposal}`
+        : previous
+          ? `\nRelevant discussion context (reference only, not additional authorization): ${previous.answer.slice(0, 1800)}`
+          : '');
+    const input = this.voice.runtimeInput(handoff);
+    const delivery = await this.controller.send(
+      row,
+      session,
+      intent === 'resume' ? 'resume' : 'instruction',
+      input,
+    );
+    this.store.db
+      .prepare('UPDATE discussions SET proposal=NULL WHERE channel=? AND root=? AND main=?')
+      .run(channel, root, session.id);
     const turnId = delivery.turnId || delivery.turn?.id;
 
     this.store.post(
       `delivered:${id}`,
       channel,
       root,
-      this.voice.say(intent === 'status' ? 'questionDelivered' : 'delivered', {
+      this.voice.say('delivered', {
         project: session.project,
       }),
     );
@@ -379,6 +446,7 @@ export class SlackBridge {
         }
       }
       this.store.expireQueued();
+      await this.discussions.tick();
       if (this.rpc.connected && this.config.userId) {
         // Restore subscriptions only to exact currently loaded identities.
         for (const { session } of this.store.db

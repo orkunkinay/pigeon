@@ -239,7 +239,7 @@ test('real MCP stdio discovery forwards runtime metadata and returns correlated 
   });
   try {
     await client.connect(transport);
-    assert.equal((await client.listTools()).tools.length, 4);
+    assert.equal((await client.listTools()).tools.length, 5);
     const denied = await client.callTool({
       name: 'pigeon_notify_human',
       arguments: { message: 'No attribution' },

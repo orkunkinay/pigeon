@@ -10,6 +10,7 @@ export interface Session {
   source: unknown;
 }
 export class CodexAdapter {
+  eventSnapshot?: (id: string, metadata: any) => any;
   constructor(public rpc: CodexRpc) {}
   async sessions(): Promise<Session[]> {
     const ids: string[] = [];
@@ -26,7 +27,12 @@ export class CodexAdapter {
           threadId: id,
           includeTurns: false,
         });
-        if (typeof t.source === 'object' || t.status.type === 'notLoaded') continue; // exclude internal subagents
+        if (
+          typeof t.source === 'object' ||
+          t.status.type === 'notLoaded' ||
+          t.threadSource === 'pigeon-discussion'
+        )
+          continue;
         sessions.push({
           id: t.id,
           name: t.name || basename(t.cwd),
@@ -69,7 +75,14 @@ export class CodexAdapter {
     } catch (e: any) {
       if (e.code !== -32601) throw e;
       // Legacy history mode exposes turns through read, not the paginated endpoint.
-      return (await this.rpc.call('thread/read', { threadId: id, includeTurns: true })).thread;
+      try {
+        return (await this.rpc.call('thread/read', { threadId: id, includeTurns: true })).thread;
+      } catch (readError: any) {
+        if (readError.code !== -32601) throw readError;
+        return (
+          this.eventSnapshot?.(id, thread) || { ...thread, turns: [], observationLimited: true }
+        );
+      }
     }
     return thread;
   }

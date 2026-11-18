@@ -116,6 +116,7 @@ export class HumanCommunication {
         session_attribution: !!call.session,
         voice: this.voice().preferences,
         tools: tools.map((t) => t.name),
+        interaction_model: 'Talk to the fork. Direct the main. Approve through the coordinator.',
       };
     if (typeof call.session !== 'string' || !call.session)
       throw Error(

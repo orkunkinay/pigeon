@@ -1,5 +1,12 @@
 export const tools = [
   {
+    name: 'pigeon_list_sessions',
+    description:
+      'List recent active and saved main conversations through the companion. Metadata only; never resumes work or controls another session.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  },
+  {
     name: 'pigeon_get_status',
     description:
       'Inspect human communication availability and preferences without sending a message.',

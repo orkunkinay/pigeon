@@ -4,6 +4,10 @@ import assert from 'node:assert/strict';
 import { SlackBridge } from '../src/transports/slack/bridge.js';
 import { Store } from '../src/store.js';
 import { Voice } from '../src/conversation/voice.js';
+import { Discussions } from '../src/core/discussions.js';
+import { Observation } from '../src/core/observation.js';
+import { MainController } from '../src/core/controller.js';
+import { selectSession } from '../src/router.js';
 /** Exercise the real routing method with a local runtime fixture; no Slack connection or model. */
 function setup(output = 'Tests: 2 failed, 18 passed, 20 total') {
   const store = new Store(':memory:');
@@ -35,10 +39,32 @@ function setup(output = 'Tests: 2 failed, 18 passed, 20 total') {
       return { mode: 'steered', turnId: 'same-turn' };
     },
   };
+  const observation = new Observation(store, adapter as any);
+  const discussions = new Discussions(
+    store,
+    { connected: false } as any,
+    observation,
+    () => new Voice(),
+  );
+  const recovery = {
+    async sessions() {
+      return [session];
+    },
+    select(s: any, _text: string, bound: string) {
+      return selectSession(s, bound);
+    },
+  };
+  const controller = new MainController(store, adapter as any, recovery as any, (id) =>
+    discussions.owns(id),
+  );
   const context = {
     store,
     voice: new Voice(),
     adapter,
+    observation,
+    discussions,
+    recovery,
+    controller,
     notifications: new Notifications(
       store,
       () => new Voice(),
@@ -54,18 +80,17 @@ function setup(output = 'Tests: 2 failed, 18 passed, 20 total') {
     (SlackBridge.prototype as any).route.call(context, { id, channel: 'D', root: 'root', text });
   return { store, delivered, adapter, route };
 }
-test('status followed by unknown failure details carries the previous observed answer to the same worker', async () => {
+test('status followed by unknown failure details queues discussion and never delivers to main', async () => {
   const { store, delivered, route } = setup();
   await route('status', 'Hey, how’s it going?');
   assert.equal(delivered.length, 0);
   await route('followup', "What's failing?");
-  assert.equal(delivered.length, 1);
-  assert.match(delivered[0], /18 passed, 2 failed/);
-  assert.ok(delivered[0].startsWith("What's failing?"));
+  assert.equal(delivered.length, 0);
   assert.equal(
-    (store.db.prepare('SELECT turn FROM awaited_replies').get() as any).turn,
-    'same-turn',
+    (store.db.prepare('SELECT text FROM discussion_jobs').get() as any).text,
+    "What's failing?",
   );
+  assert.match(store.conversation('D', 'root', 'original')!.answer, /18 passed, 2 failed/);
   store.close();
 });
 test('known failure names stay observational and a later instruction keeps their referent', async () => {

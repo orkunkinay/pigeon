@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-18T11:31:53.292Z",
+  "cwd": "/var/folders/g8/31llxq_d46gdynjyr71stwdr0000gn/T/pigeon-fork-proof-z57Muo",
+  "main": "01a1ee6d-7552-7913-a41b-b852a654ee8a",
+  "fork": "01a1ee6d-8536-7362-8b98-361bfafae717",
+  "sandbox": {
+    "type": "readOnly",
+    "networkAccess": false
+  },
+  "approvalPolicy": "never",
+  "externalToolCount": 0,
+  "items": [
+    {
+      "type": "userMessage"
+    },
+    {
+      "type": "reasoning"
+    },
+    {
+      "type": "agentMessage",
+      "text": "Inherited marker: PIGEON-CONTEXT-9241. I’ll attempt the patch once."
+    },
+    {
+      "type": "agentMessage",
+      "text": "Marker: PIGEON-CONTEXT-9241.\n\nThe single patch attempt was denied by the read-only sandbox. No file was created."
+    }
+  ],
+  "inheritedMarker": true,
+  "writeBlocked": true
+}

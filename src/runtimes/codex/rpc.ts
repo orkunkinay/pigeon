@@ -20,6 +20,7 @@ export class RpcError extends Error {
 }
 /** Connect to the existing daemon; never create a second runtime. */
 export class CodexRpc extends EventEmitter {
+  version?: string;
   private socket?: WebSocket;
   private nextId = 0;
   private pending = new Map<
@@ -81,6 +82,7 @@ export class CodexRpc extends EventEmitter {
         capabilities: { experimentalApi: true, requiredHumanApproval: true },
       });
       this.send({ method: 'initialized' });
+      this.version = /codex[^/]*\/([\d.]+)/.exec(info.userAgent || '')?.[1];
       return info;
     } catch (e) {
       ws.terminate();
