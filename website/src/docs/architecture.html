@@ -1,6 +1,8 @@
 desc: Modules and data flow, matched to the source.
 ---
 <p class="lede">Pigeon is a companion to a runtime that already owns the agent. Slack input crosses a transport boundary into the same Codex thread the normal UI uses.</p>
+<h2>Target design</h2>
+<figure class="shot"><button type="button"><img src="../assets/images/pigeon-architecture.jpg" loading="lazy" alt="Hand-drawn sketch of the target architecture: an intent router sending messages to a conversational fork, a main agent controller, an approval coordinator and a session recovery manager."></button><figcaption><span class="kind">Design sketch</span> · The target design. The fork and the recovery manager are not built; the diagrams below show what exists today.</figcaption></figure>
 <h2>Data flow</h2>
 <figure class="fig"><svg viewBox="0 0 900 360" role="img" aria-label="Slack to ingress to SQLite to router to Codex adapter to the Codex daemon, with approvals and notifications returning through an outbox to Slack">
 <defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="var(--green)"/></marker></defs>

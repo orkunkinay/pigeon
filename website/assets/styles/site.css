@@ -225,3 +225,6 @@ dialog.lb button{position:sticky;top:0;float:right;margin-bottom:8px}
 .ss text{font-family:var(--sans)}
 .term .step{display:block;opacity:0;animation:in .45s forwards;white-space:pre-wrap}
 .code code{background:none;padding:0}
+#design .shot button img{border-radius:6px}
+dialog.lb .in img{min-width:1100px}
+@media (max-width:700px){dialog.lb .in img{min-width:900px}}

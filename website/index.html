@@ -138,6 +138,21 @@
 </div>
 </section>
 
+<section id="design">
+<div class="wrap" style="max-width:1320px">
+  <p class="eyebrow">The design</p>
+  <h2>Route by intent, never send every message to main.</h2>
+  <p class="sub">This sketch is the architecture Pigeon is built around: casual questions go to a read-only fork, instructions to the main session, approvals through a coordinator, and stopped work through a recovery manager. <strong>It is the target design, not a description of today's code.</strong> Click the image to enlarge it.</p>
+  <figure class="shot" style="margin:26px 0 0"><button type="button" aria-label="Enlarge the architecture sketch"><picture><source srcset="assets/images/pigeon-architecture.webp" type="image/webp"><img src="assets/images/pigeon-architecture.jpg" width="1448" height="1086" loading="lazy" alt="Hand-drawn architecture sketch. A Slack message goes to Pigeon's intent router, which routes to a conversational fork for questions, a main agent controller for instructions, an approval coordinator for approvals and authentication, and a session recovery manager for stopped sessions. A session registry and the Pigeon skill with MCP tools sit alongside. An example flow runs from a question, to an instruction, to an authentication approval, to the main session continuing."></picture></button>
+  <figcaption>Design sketch. Which parts exist today is listed below.</figcaption></figure>
+  <div class="strip">
+    <div class="box"><span class="pill ok">Built</span><ul><li>Intent routing (a fixed phrase list)</li><li>Approval handling with one-use buttons</li><li>Skill and four MCP tools</li><li>Live session registry and thread-to-session mapping</li><li>Status answered from observed state</li></ul></div>
+    <div class="box"><span class="pill exp">Partly</span><ul><li>Main control: steering and interrupts exist, in the Codex adapter rather than a separate controller</li><li>Authentication help: via the agent's <code>pigeon_request_human_action</code> tool</li></ul></div>
+    <div class="box"><span class="pill no">Not built</span><ul><li>Conversational fork (read-only forked session)</li><li>Session recovery manager</li><li>Intent classification beyond fixed phrases</li></ul></div>
+  </div>
+</div>
+</section>
+
 <section id="quickstart">
 <div class="wrap">
   <p class="eyebrow">Quick start</p>
