@@ -103,7 +103,9 @@ When the control socket is unavailable, Pigeon may invoke Codex’s idempotent
 `app-server daemon start`, at most once per 30 seconds. It never upgrades, restarts,
 stops, or enables remote control on Codex. A managed daemon package must already be
 available. Starting Pigeon before opening the CLI makes normal CLI reuse possible;
-clients that explicitly choose an embedded server remain unsupported.
+independent control of clients that explicitly choose an embedded server remains unsupported.
+Agent-initiated MCP tools can return replies directly to those private runtimes; see
+[agent integration](AGENT-INTEGRATION.md).
 
 SQLite stores mappings, inbox/outbox records, native requests, and completion watches.
 An atomic local directory claim prevents duplicate Pigeon consumers. Tokens are

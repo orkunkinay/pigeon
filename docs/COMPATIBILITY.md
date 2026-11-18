@@ -22,10 +22,13 @@ runtime-dependent; version numbers alone do not guarantee attachment.
 | Codex restart | Experimental | Retries discovery and only reconnects loaded identities; old native controls are invalidated. No interruption of unrelated work to test daemon restart. |
 | Network loss / Mac sleep | Experimental | SDK reconnection and durable outbox implemented; physical sleep/network-drop tests not yet run. Slack is not a guaranteed offline inbox. |
 | macOS service | Implemented and verified | LaunchAgent bootstrapped and restarted; reboot itself has not been tested. |
-| CLI with `--no-daemon` | Unsupported | Private runtime has no shared control endpoint. |
+| Live control of CLI with `--no-daemon` | Unsupported | Private runtime has no shared control endpoint. Agent-initiated MCP communication can still return replies directly. |
 | IDE sharing the daemon | Implemented with restrictions | Existing daemon exposed VS Code-sourced sessions. No claim for every extension version. |
 | Dedicated Codex desktop app | Experimental / unverified | No test of this surface on this machine. |
-| MCP / Slack screenshots | Unsupported | Neither is shipped in this preview. |
+| Pigeon skill and MCP discovery | Implemented and verified | Fresh Codex session independently read the skill and used its tools. Native first-use consent still applies. |
+| MCP notification and correlated question | Implemented and verified | Actual agent send, authenticated Slack reply, same original MCP caller, and Slack response readback; `awareness-notify-proof.json`, `awareness-ask-proof.json`. |
+| MCP external-action request | Implemented with restrictions | Same durable coordinator; local verification tests. A human report is not proof that authentication completed. Real provider authentication was not induced for this test. |
+| Slack screenshots | Unsupported | File uploads are not shipped in this preview. |
 | Clean package install | Implemented and verified | Empty-prefix install; staged CLI worked after source deletion. Separate from fresh-account Slack onboarding. |
 
 Pigeon does not take ownership of saved thread history or bypass active-writer

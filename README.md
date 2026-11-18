@@ -97,7 +97,7 @@ See [personality and conversation](docs/PERSONALITY.md) for all options and limi
   recovery after a Codex daemon restart. Pigeon does not restart Codex during installation.
 - **Unsupported:** attaching to arbitrary private stdio/embedded runtimes; generic terminal
   injection; file-change or broad permission approvals; Slack file uploads/screenshots;
-  multi-question forms; an optional MCP server; Windows/Linux installation.
+  multi-question forms; Windows/Linux installation.
 
 A saved conversation is not a live connection. Pigeon lists only sessions loaded
 in the connected daemon. It checks before joining with `thread/resume`; there is
@@ -112,6 +112,18 @@ There is no cloud worker, tunnel, hosted database, separate LLM API, or recurrin
 Pigeon subscription. **Codex’s own access and usage are still your responsibility.**
 Slack Free allows ten installed apps and exposes the latest 90 days of history;
 Pigeon occupies one app slot. [Slack’s Free limits](https://slack.com/help/articles/115002422943-Usage-limits-for-free-workspaces).
+
+## Your agent knows Pigeon
+
+Setup installs a global skill, registers four human communication tools, and adds a short
+awareness paragraph without replacing your instructions. The agent can ask a question,
+request external assistance, send an update, or check whether its human is reachable.
+The tools share the existing companion and return replies to the original caller.
+
+Fresh-session discovery and a real agent-initiated Slack message are verified.
+Codex’s first-use tool consent still applies; setup does not weaken execution approvals.
+See [agent integration](docs/AGENT-INTEGRATION.md) for contracts, recovery, and consent.
+MCP replies also work in private runtimes; independent live steering still requires the shared daemon.
 
 ## Diagnostics
 
@@ -129,8 +141,8 @@ Use `node dist/cli.js …` when running from source. To install the CLI locally,
 `@pigeon-dev/cli` is a proposed, unpublished name; scope ownership is not established.
 
 Uninstall removes Pigeon’s service, Keychain items, and local state. Remove the
-Slack app separately in Slack if desired. Codex configuration and conversations
-are untouched.
+Slack app separately in Slack if desired. Pigeon’s owned skill, MCP registration, and instruction paragraph are removed safely;
+other Codex settings and conversations are preserved.
 
 ## Build and contribute
 

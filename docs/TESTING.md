@@ -58,7 +58,7 @@ npm run build
 npm pack
 ```
 
-The local suite currently has 44 tests, including a real Unix WebSocket fixture,
+The local suite currently has 54 tests, including a real Unix WebSocket fixture,
 out-of-order RPC response correlation, disconnect failure, crash recovery, expired
 queues, durable Unicode chunking, actual ingress authorization, secret-input exclusion,
 and one-use approval controls. CI is configured; no remote CI run has occurred.
@@ -85,3 +85,16 @@ context, real SQLite reopen across a long pause, quiet/important/updates notific
 policies, interrupted/failed turns, a fast-response acceptance race, locale/formality/
 verbosity controls, and credential-free CLI configuration. The original core live-test
 JSON files above remain historical evidence from their recorded dates/commits.
+
+## Agent awareness and MCP communication
+
+See [agent integration](AGENT-INTEGRATION.md) and [fresh-session evidence](awareness-notify-proof.json).
+A task that did not name Pigeon triggered automatic skill loading, availability inspection,
+and a real message verified in Slack. This test used a disposable session with only the
+communication tool preauthorized for that invocation. A first attempt without consent
+was correctly rejected; global approval policy remains unchanged.
+
+The suite also exercises real MCP stdio and a private Unix socket, durable correlated
+replies, request expiry, uncertain delivery, native-approval separation, and reversible
+registration through the actual Codex CLI in an isolated home. These registration tests
+require an installed Codex binary, but no runtime, model, Slack credentials, or network.

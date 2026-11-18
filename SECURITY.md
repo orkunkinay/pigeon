@@ -48,3 +48,15 @@ Report vulnerabilities privately through the eventual repository owner’s GitHu
 security advisory channel once the repository is published. Until then, do not post
 secrets or exploit details in public issues. No private-reporting endpoint is configured
 by this checkout.
+
+Agent communication uses MCP stdio and a mode-0600 Unix socket, with no network listener
+and no Slack secrets in MCP processes. Per-call runtime metadata attributes requests;
+processes sharing the operating-system account are trusted. Human replies are user input,
+never execution approval or proof of external authentication. Requests expire without
+consent, and terminal request records (including bounded replies) are pruned one day
+after their original expiry. Common credential patterns are rejected, but this is not
+a general secret detector. See [agent integration](docs/AGENT-INTEGRATION.md) for details.
+
+Setup adds only an owned skill, MCP launcher/registration, and a delimited global
+instruction paragraph. It does not configure automatic approval of communication or
+execution tools. Uninstall preserves modified integration files for review.
