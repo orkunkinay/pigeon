@@ -159,5 +159,5 @@ Read [architecture](docs/ARCHITECTURE.md), [research](docs/RESEARCH.md),
 and Slack transport are separate modules. Native approvals remain subject to
 Codex’s own policy; Pigeon never approves automatically.
 
-MIT licensed. Prepared for `Murat-Barkin-Kinay/pigeon`; no remote repository or npm
+MIT licensed. Prepared for `orkunkinay/pigeon`; no remote repository or npm
 package is created by setup.

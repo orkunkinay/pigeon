@@ -16,9 +16,8 @@ Publishing status:
 
 - The existing `origin` points to `https://github.com/orkunkinay/pigeon.git`; inspection
   found an empty public repository. It has been preserved, with no pushes or remote edits.
-- `Murat-Barkin-Kinay` exists. A request for `Murat-Barkin-Kinay/pigeon` returned 404
-  to the available account. That establishes absence of a visible repository, not a
-  guarantee of availability or authority to create one under that account.
+- The publication target is now `orkunkinay/pigeon`. Future local commits use
+  `orkunkinay <orkunkinay@sabanciuniv.edu>`; existing commit history is preserved.
 - Bare npm `pigeon` already names a different package. `@pigeon-dev/cli` was not
   found in the registry; scope ownership has not been established. Do not publish
   until the maintainer chooses an owned scope and repository destination.
