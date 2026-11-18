@@ -47,5 +47,11 @@ export class CodexRpc extends EventEmitter {
   }
   send(message: RpcMessage) { if (!this.connected) throw new Error('Codex is disconnected'); this.socket!.send(JSON.stringify(message)); }
   respond(id: string | number, result: unknown) { this.send({ id, result }); }
-  close() { this.socket?.close(); }
+  async close() {
+    const ws=this.socket;if(!ws)return;
+    await new Promise<void>(resolve=>{
+      const timer=setTimeout(()=>ws.terminate(),1000);
+      ws.once('close',()=>{clearTimeout(timer);resolve();});ws.close();
+    });
+  }
 }

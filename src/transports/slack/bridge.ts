@@ -53,7 +53,7 @@ export class SlackBridge {
   }
  }
  async start(){await this.app.start();this.running=true;log('slack_connected');this.timer=setInterval(()=>void this.tick(),1000);await this.tick();}
- async stop(){this.running=false;if(this.timer)clearInterval(this.timer);this.rpc.close();await this.app.stop();}
+ async stop(){this.running=false;if(this.timer)clearInterval(this.timer);while(this.busy)await new Promise(r=>setTimeout(r,25));await this.serial;await this.rpc.close();await this.app.stop();}
  private async choose(channel:string,root:string){
   const sessions=await this.adapter.sessions();
   const blocks:any[]=[{type:'section',text:{type:'plain_text',text:sessions.length?'Choose a session. Instructions are sent only after a selection.':'No live sessions are available in the shared Codex daemon. Open Codex normally; private embedded runtimes cannot be controlled.'}}];
