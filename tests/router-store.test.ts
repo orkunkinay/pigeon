@@ -58,3 +58,12 @@ test('stale queued instructions expire and discard their body', () => {
   assert.match(s.outgoing()[0].text, /expired/);
   s.close();
 });
+test('short conversational replies need a grounded request; progress is not a question', async () => {
+  const { awaitsConversationalReply } = await import('../src/router.js');
+  const t = (text: string) => ({ turns: [{ items: [{ type: 'agentMessage', text }] }] });
+  assert.ok(
+    awaitsConversationalReply(t('Please select 88 in Authenticator and let me know when done.')),
+  );
+  assert.ok(awaitsConversationalReply(t('Waiting for your answer.')));
+  assert.equal(awaitsConversationalReply(t('The test suite has completed.')), false);
+});

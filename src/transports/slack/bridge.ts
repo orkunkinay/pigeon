@@ -6,7 +6,7 @@ import { Store } from '../../store.js';
 import { CodexRpc, type RpcMessage } from '../../runtimes/codex/rpc.js';
 import { CodexAdapter } from '../../runtimes/codex/adapter.js';
 import { Approvals } from '../../approvals.js';
-import { classify, selectSession, statusText } from '../../router.js';
+import { classify, selectSession, statusText, awaitsConversationalReply } from '../../router.js';
 import { log, failure, slackLogger } from '../../log.js';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -245,7 +245,17 @@ export class SlackBridge {
       );
       return;
     }
-    if (intent === 'ambiguous') {
+    const pendingNative = this.store.db
+      .prepare(
+        "SELECT token FROM approvals WHERE channel=? AND root=? AND status='pending' AND expires>? LIMIT 1",
+      )
+      .get(channel, root, Date.now());
+    if (
+      intent === 'ambiguous' &&
+      (!bound ||
+        pendingNative ||
+        !awaitsConversationalReply(await this.adapter.snapshot(session.id)))
+    ) {
       this.store.post(
         `ambiguous:${id}`,
         channel,

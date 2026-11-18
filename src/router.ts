@@ -51,3 +51,16 @@ export function statusText(session: Session, thread: any): string {
       : '')
   );
 }
+
+/** A terse reply needs an actual conversational request in the mapped session. */
+export function awaitsConversationalReply(thread: any): boolean {
+  const message = thread.turns
+    ?.at(-1)
+    ?.items?.findLast((i: any) => i.type === 'agentMessage' && i.text)?.text;
+  return (
+    typeof message === 'string' &&
+    /\?|please (?:reply|confirm|choose|select|tell me)|waiting for your (?:answer|response)|let me know (?:when|once)|when you.?re done/i.test(
+      message,
+    )
+  );
+}

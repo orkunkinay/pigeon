@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, rm, mkdir, stat } from 'node:fs/promises';
+import { readFile, rm, rmdir, mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
@@ -122,7 +122,18 @@ async function run() {
   if (command === 'uninstall') {
     await removeService();
     await deleteSecrets();
-    await rm(home, { recursive: true, force: true });
+    for (const name of [
+      'config.json',
+      'health.json',
+      'pigeon.sqlite',
+      'pigeon.sqlite-wal',
+      'pigeon.sqlite-shm',
+      'pigeon.log',
+      'daemon.lock',
+      'runtimes',
+    ])
+      await rm(join(home, name), { recursive: true, force: true });
+    await rmdir(home).catch(() => {});
     console.log(
       'Pigeon service, credentials and local state removed. Codex and the Slack application were left intact.',
     );
