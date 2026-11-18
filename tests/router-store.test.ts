@@ -37,3 +37,24 @@ test('deduplicates incoming instructions and outgoing notifications durably', ()
   assert.equal(s.outgoing().length, 0);
   s.close();
 });
+test('long Unicode notifications are durably chunked and deduplicated before delivery', () => {
+  const s = new Store(':memory:');
+  const text = '🕊️'.repeat(2000);
+  s.post('long', 'D', 't', text);
+  s.post('long', 'D', 't', text);
+  const rows = s.outgoing();
+  assert.ok(rows.length > 1);
+  assert.equal(rows.map((r) => r.text).join(''), text);
+  for (const row of rows) assert.ok(!row.text.includes('\ufffd'));
+  s.close();
+});
+test('stale queued instructions expire and discard their body', () => {
+  const s = new Store(':memory:');
+  s.enqueue('old', 'D', 't', 'old command');
+  s.db.prepare('UPDATE inbox SET created=?').run(Date.now() - 300001);
+  s.expireQueued();
+  assert.equal(s.queued().length, 0);
+  assert.equal((s.db.prepare('SELECT text FROM inbox').get() as any).text, null);
+  assert.match(s.outgoing()[0].text, /expired/);
+  s.close();
+});

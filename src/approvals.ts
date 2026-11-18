@@ -21,6 +21,19 @@ export class Approvals {
     const target = this.store.targets(p.threadId)[0];
     if (!target) return;
     if (
+      m.method === 'item/tool/requestUserInput' &&
+      ((p.questions || []).length !== 1 || p.questions.some((q: any) => q.isSecret))
+    ) {
+      this.store.post(
+        `local-input:${this.generation}:${JSON.stringify(m.id)}`,
+        target.channel,
+        target.root,
+        'Codex needs input that must be answered locally (a private field or a form with multiple questions). Open Codex to respond. The question contents were not forwarded.',
+      );
+      return;
+    }
+
+    if (
       this.store.db
         .prepare("SELECT token FROM approvals WHERE generation=? AND rpc_id=? AND status='pending'")
         .get(this.generation, JSON.stringify(m.id))

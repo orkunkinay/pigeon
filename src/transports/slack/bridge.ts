@@ -1,7 +1,7 @@
 import bolt from '@slack/bolt';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import type { Config } from '../../config.js';
-import { saveConfig, home } from '../../config.js';
+import { home } from '../../config.js';
 import { Store } from '../../store.js';
 import { CodexRpc, type RpcMessage } from '../../runtimes/codex/rpc.js';
 import { CodexAdapter } from '../../runtimes/codex/adapter.js';
@@ -11,19 +11,13 @@ import { log, failure, slackLogger } from '../../log.js';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 const { App, SocketModeReceiver } = bolt;
-export function authorized(config: Config, team: unknown, user: unknown, channel: unknown) {
-  return (
-    !!config.userId &&
-    team === config.teamId &&
-    user === config.userId &&
-    typeof channel === 'string' &&
-    channel.startsWith('D')
-  );
-}
+export { authorized } from './ingress.js';
+import { authorized, SlackIngress } from './ingress.js';
 export class SlackBridge {
   readonly app: InstanceType<typeof App>;
   readonly receiver: InstanceType<typeof SocketModeReceiver>;
   private slackConnected = false;
+  private ingress: SlackIngress;
   readonly rpc = new CodexRpc();
   readonly adapter = new CodexAdapter(this.rpc);
   readonly approvals: Approvals;
@@ -41,16 +35,17 @@ export class SlackBridge {
     readonly store: Store,
     botToken: string,
     appToken: string,
-    private pairingCode?: string,
+    pairingCode?: string,
   ) {
     this.approvals = new Approvals(store, this.rpc);
+    this.ingress = new SlackIngress(config, store, () => this.rpc.connected, pairingCode);
     store.invalidateApprovals();
     this.receiver = new SocketModeReceiver({
       appToken,
       logger: slackLogger,
       logLevel: bolt.LogLevel.ERROR,
       customPropertiesExtractor: ({ body }: any) => {
-        this.receive(body);
+        this.ingress.receive(body);
         return {};
       },
     });
@@ -130,64 +125,6 @@ export class SlackBridge {
       this.approvals.disconnect();
       log('codex_disconnected');
     });
-  }
-  private receive(body: any) {
-    const event = body?.event;
-    if (!event || event.type !== 'message') return;
-    if (
-      event.bot_id ||
-      event.subtype ||
-      !event.text ||
-      event.channel_type !== 'im' ||
-      body.team_id !== this.config.teamId
-    )
-      return;
-    if (!this.config.userId) {
-      const candidate = event.text.trim(),
-        expected = 'pair ' + this.pairingCode;
-      if (
-        !this.pairingCode ||
-        Buffer.byteLength(candidate) !== Buffer.byteLength(expected) ||
-        !timingSafeEqual(Buffer.from(candidate), Buffer.from(expected))
-      )
-        return;
-      this.config.userId = event.user;
-      this.config.dmChannel = event.channel;
-      saveConfig(this.config);
-      this.pairingCode = undefined;
-      this.store.post(
-        'paired',
-        event.channel,
-        event.ts,
-        'Pigeon is paired with you. Say “sessions” to choose your coding session.',
-      );
-      log('paired');
-      return;
-    }
-    if (!authorized(this.config, body.team_id, event.user, event.channel)) return;
-    const eventId = body.event_id || event.client_msg_id || `${event.channel}:${event.ts}`;
-    if (!this.rpc.connected && classify(event.text) === 'interrupt') {
-      this.store.post(
-        `offline-stop:${eventId}`,
-        event.channel,
-        event.thread_ts || event.ts,
-        'Codex is disconnected. The stop request was not sent or queued; stop it locally if needed.',
-      );
-      return;
-    }
-    const inserted = this.store.enqueue(
-      body.event_id || event.client_msg_id || `${event.channel}:${event.ts}`,
-      event.channel,
-      event.thread_ts || event.ts,
-      event.text,
-    );
-    if (inserted && !this.rpc.connected)
-      this.store.post(
-        `queued:${eventId}`,
-        event.channel,
-        event.thread_ts || event.ts,
-        'Codex is disconnected. Your message is queued for at most five minutes and will use this thread’s session mapping.',
-      );
   }
   private schedule(fn: () => Promise<void>) {
     this.serial = this.serial.then(fn).catch(() => failure('runtime_notification'));
@@ -415,6 +352,15 @@ export class SlackBridge {
       }
       for (const row of Date.now() >= this.nextPostAt ? this.store.outgoing().slice(0, 1) : []) {
         try {
+          if (row.id.startsWith('approval:')) {
+            const current = this.store.db
+              .prepare('SELECT status FROM approvals WHERE token=?')
+              .get(row.id.slice(9)) as any;
+            if (current?.status !== 'pending') {
+              this.store.sent(row.id);
+              continue;
+            }
+          }
           await this.app.client.chat.postMessage({
             channel: row.channel,
             thread_ts: row.root,

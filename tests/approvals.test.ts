@@ -75,3 +75,25 @@ test('additional permission grants cannot be approved remotely', () => {
   approvals.resolve(token, 'D1', 'root', 'decline');
   store.close();
 });
+
+test('secret input fields are never persisted or forwarded to Slack', () => {
+  const { store, approvals } = fixture();
+  approvals.receive({
+    id: 14,
+    method: 'item/tool/requestUserInput',
+    params: {
+      threadId: 'session',
+      questions: [{ id: 'password', question: 'private question content', isSecret: true }],
+    },
+  });
+  assert.equal((store.db.prepare('SELECT count(*) AS n FROM approvals').get() as any).n, 0);
+  assert.ok(!JSON.stringify(store.outgoing()).includes('private question content'));
+  store.close();
+});
+test('a command that would be truncated cannot be approved by forging its button action', () => {
+  const { store, approvals } = fixture();
+  approvals.receive({ ...req, params: { ...req.params, reason: 'x'.repeat(3000) } });
+  const token = (store.db.prepare('SELECT token FROM approvals').get() as any).token;
+  assert.throws(() => approvals.resolve(token, 'D1', 'root', 'accept'));
+  store.close();
+});
